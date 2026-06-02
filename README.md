@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Validation Agent Test Harness
 
-## Getting Started
+A small Next.js app for testing validation agents. Select a document, provide instructions, choose an OpenAI model, and inspect the analysis output with token usage and estimated cost.
 
-First, run the development server:
+## Features
+
+- Instruction prompt editor for custom validation workflows
+- Model selector (GPT-5.5, GPT-5.4, GPT-5.4 mini)
+- Direct document upload to the analyze API (no external storage)
+- PDF and plain-text document parsing
+- OpenAI chat completion analysis
+- Token usage and per-request cost breakdown
+
+## Setup
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Copy environment variables:
+
+```bash
+cp .env.example .env.local
+```
+
+3. Add your OpenAI API key to `.env.local`:
+
+- `OPENAI_API_KEY` — from the [OpenAI dashboard](https://platform.openai.com/api-keys)
+
+4. Run locally:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Deploy to Vercel
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Push this repo to GitHub.
+2. Import the project in [Vercel](https://vercel.com/new).
+3. Set `OPENAI_API_KEY` in project environment variables.
+4. Deploy.
 
-## Learn More
+## Supported file types
 
-To learn more about Next.js, take a look at the following resources:
+- PDF (`.pdf`)
+- Plain text (`.txt`, `.md`, `.csv`, `.json`, `.xml`, `.html`)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Maximum upload size: 10 MB.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## API routes
 
-## Deploy on Vercel
+- `POST /api/analyze` — accepts `multipart/form-data` with `file`, `instructions`, and `model`; extracts text, runs OpenAI, returns output + usage
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Cost estimates
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Pricing is configured in `src/lib/models.ts` using published OpenAI rates. Update the values there if pricing changes.
