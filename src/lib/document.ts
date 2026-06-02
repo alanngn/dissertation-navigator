@@ -1,4 +1,4 @@
-import { PDFParse } from "pdf-parse";
+import { extractText, getDocumentProxy } from "unpdf";
 
 const TEXT_EXTENSIONS = new Set([
   "txt",
@@ -26,13 +26,9 @@ export async function extractDocumentText(
     extension === "pdf" || contentType?.toLowerCase().includes("pdf");
 
   if (isPdf) {
-    const parser = new PDFParse({ data: buffer });
-    try {
-      const result = await parser.getText();
-      return result.text.trim();
-    } finally {
-      await parser.destroy();
-    }
+    const pdf = await getDocumentProxy(new Uint8Array(buffer));
+    const { text } = await extractText(pdf, { mergePages: true });
+    return text.trim();
   }
 
   if (TEXT_EXTENSIONS.has(extension) || contentType?.startsWith("text/")) {

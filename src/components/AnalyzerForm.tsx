@@ -2,7 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { DEFAULT_MODEL, MODELS } from "@/lib/models";
+import { parseApiResponse } from "@/lib/parse-api-response";
 import { formatUsd, type UsageCost } from "@/lib/pricing";
+
+const MAX_FILE_SIZE = 4 * 1024 * 1024;
 
 type AnalyzeResponse = {
   output: string;
@@ -43,6 +46,14 @@ export function AnalyzerForm() {
 
     if (!selected) return;
 
+    if (selected.size > MAX_FILE_SIZE) {
+      setFile(null);
+      setError(
+        "File exceeds 4 MB. Vercel limits request size to ~4.5 MB in production.",
+      );
+      return;
+    }
+
     setFile(selected);
     setError(null);
     setOutput("");
@@ -75,9 +86,9 @@ export function AnalyzerForm() {
         body: formData,
       });
 
-      const data = (await response.json()) as AnalyzeResponse & {
-        error?: string;
-      };
+      const data = await parseApiResponse<
+        AnalyzeResponse & { error?: string }
+      >(response);
 
       if (!response.ok) {
         throw new Error(data.error ?? "Analysis failed.");
@@ -168,7 +179,7 @@ export function AnalyzerForm() {
                 {file ? file.name : "Click to select a document"}
               </span>
               <span className="mt-1 text-xs text-zinc-500">
-                PDF, TXT, MD, CSV, JSON up to 10 MB
+                PDF, TXT, MD, CSV, JSON up to 4 MB
               </span>
               <input
                 id="document"

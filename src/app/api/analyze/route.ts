@@ -5,9 +5,11 @@ import { calculateCost } from "@/lib/pricing";
 import { DEFAULT_MODEL, getModelById } from "@/lib/models";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+/** Vercel rejects request bodies above ~4.5 MB before our handler runs. */
+const MAX_FILE_SIZE = 4 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { error: "File exceeds the 10 MB limit." },
+        { error: "File exceeds the 4 MB limit (Vercel max request size is ~4.5 MB)." },
         { status: 400 },
       );
     }

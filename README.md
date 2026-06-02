@@ -49,7 +49,7 @@ Open [http://localhost:3000](http://localhost:3000).
 - PDF (`.pdf`)
 - Plain text (`.txt`, `.md`, `.csv`, `.json`, `.xml`, `.html`)
 
-Maximum upload size: 10 MB.
+Maximum upload size: 4 MB (Vercel caps function request bodies at ~4.5 MB).
 
 ## API routes
 
