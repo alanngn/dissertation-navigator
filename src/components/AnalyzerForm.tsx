@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useInstructionPresets } from "@/hooks/useInstructionPresets";
 import { DEFAULT_MODEL, MODELS } from "@/lib/models";
 import { parseApiResponse } from "@/lib/parse-api-response";
 import { formatUsd, type UsageCost } from "@/lib/pricing";
@@ -13,12 +14,6 @@ type AnalyzeResponse = {
   usage: UsageCost;
 };
 
-const DEFAULT_INSTRUCTIONS = `Analyze the uploaded document and return:
-1. A brief summary
-2. Key claims or findings
-3. Potential validation issues or gaps
-4. A pass/fail recommendation with rationale`;
-
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -26,7 +21,24 @@ function formatBytes(bytes: number): string {
 }
 
 export function AnalyzerForm() {
-  const [instructions, setInstructions] = useState(DEFAULT_INSTRUCTIONS);
+  const {
+    ready,
+    presets,
+    activeId,
+    activePreset,
+    isDraft,
+    isDirty,
+    instructions,
+    presetName,
+    updateInstructions,
+    updatePresetName,
+    commitPresetName,
+    selectPreset,
+    startNewDraft,
+    savePreset,
+    deleteActivePreset,
+  } = useInstructionPresets();
+
   const [model, setModel] = useState(DEFAULT_MODEL);
   const [file, setFile] = useState<File | null>(null);
   const [output, setOutput] = useState("");
@@ -34,6 +46,7 @@ export function AnalyzerForm() {
   const [documentChars, setDocumentChars] = useState<number | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [presetMessage, setPresetMessage] = useState<string | null>(null);
 
   const selectedModel = useMemo(
     () => MODELS.find((item) => item.id === model),
@@ -59,6 +72,71 @@ export function AnalyzerForm() {
     setOutput("");
     setUsage(null);
     setDocumentChars(null);
+  }
+
+  function handleSelectPreset(event: React.ChangeEvent<HTMLSelectElement>) {
+    const value = event.target.value;
+    setPresetMessage(null);
+
+    if (value === "__draft__") {
+      startNewDraft();
+      return;
+    }
+
+    selectPreset(value);
+  }
+
+  function handleNewPreset() {
+    setPresetMessage(null);
+    startNewDraft();
+  }
+
+  function handlePresetNameBlur() {
+    if (isDraft) return;
+
+    const result = commitPresetName();
+    if ("error" in result && result.error) {
+      setPresetMessage(result.error);
+    }
+  }
+
+  function handlePresetNameKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      event.currentTarget.blur();
+    }
+  }
+
+  function handleSavePreset() {
+    setPresetMessage(null);
+    const result = savePreset();
+
+    if ("error" in result && result.error) {
+      setPresetMessage(result.error);
+      return;
+    }
+
+    setPresetMessage("Preset saved.");
+  }
+
+  function handleDeletePreset() {
+    setPresetMessage(null);
+
+    if (
+      !activePreset ||
+      !window.confirm(`Delete "${activePreset.name}"? This cannot be undone.`)
+    ) {
+      return;
+    }
+
+    const result = deleteActivePreset();
+
+    if ("error" in result && result.error) {
+      setPresetMessage(result.error);
+      return;
+    }
+
+    setPresetMessage("Preset deleted.");
   }
 
   async function handleAnalyze(event: React.FormEvent) {
@@ -108,6 +186,8 @@ export function AnalyzerForm() {
     }
   }
 
+  const selectValue = isDraft ? "__draft__" : (activeId ?? "");
+
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-10">
       <header className="space-y-2">
@@ -125,6 +205,114 @@ export function AnalyzerForm() {
 
       <form onSubmit={handleAnalyze} className="grid gap-6 lg:grid-cols-2">
         <section className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <div className="space-y-4 rounded-xl border-2 border-indigo-200 bg-indigo-50/40 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-zinc-900">
+                Instruction preset
+              </h3>
+              {isDirty && (
+                <span className="text-xs font-medium text-amber-700">
+                  Unsaved instruction changes
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-2 rounded-xl border border-indigo-200 bg-white p-3">
+              <label
+                htmlFor="preset-name"
+                className="flex items-center gap-2 text-sm font-semibold text-indigo-900"
+              >
+                <span
+                  aria-hidden
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-100 text-base"
+                >
+                  ✎
+                </span>
+                Edit name
+              </label>
+              <input
+                id="preset-name"
+                type="text"
+                value={presetName}
+                onChange={(event) => updatePresetName(event.target.value)}
+                onBlur={handlePresetNameBlur}
+                onKeyDown={handlePresetNameKeyDown}
+                disabled={analyzing}
+                placeholder={
+                  isDraft
+                    ? "Enter a name for this preset"
+                    : "Change the preset name here"
+                }
+                className="w-full rounded-lg border-2 border-indigo-200 bg-white px-4 py-3 text-sm font-medium text-zinc-900 outline-none ring-indigo-500 placeholder:font-normal placeholder:text-zinc-400 focus:border-indigo-500 focus:ring-2 disabled:bg-zinc-100"
+              />
+              <p className="text-xs leading-5 text-zinc-600">
+                {isDraft
+                  ? "Required before you save a new preset."
+                  : "Renames save automatically when you click away or press Enter."}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label
+                htmlFor="preset-select"
+                className="text-sm font-medium text-zinc-900"
+              >
+                Switch preset
+              </label>
+              <select
+                id="preset-select"
+                value={ready ? selectValue : ""}
+                onChange={handleSelectPreset}
+                disabled={!ready || analyzing}
+                className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none ring-indigo-500 focus:border-indigo-500 focus:ring-2 disabled:bg-zinc-100"
+              >
+                {!ready && <option value="">Loading presets...</option>}
+                {ready && isDraft && (
+                  <option value="__draft__">New draft (unsaved)</option>
+                )}
+                {presets.map((preset) => (
+                  <option key={preset.id} value={preset.id}>
+                    {preset.name}
+                  </option>
+                ))}
+                {ready && !isDraft && (
+                  <option value="__draft__">+ New draft...</option>
+                )}
+              </select>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleNewPreset}
+                disabled={analyzing}
+                className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-50"
+              >
+                New
+              </button>
+              <button
+                type="button"
+                onClick={handleSavePreset}
+                disabled={analyzing || !instructions.trim()}
+                className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-50"
+              >
+                {isDraft ? "Save as new" : "Save"}
+              </button>
+              <button
+                type="button"
+                onClick={handleDeletePreset}
+                disabled={analyzing || isDraft}
+                className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-50"
+              >
+                Delete
+              </button>
+            </div>
+
+            {presetMessage && (
+              <p className="text-xs text-zinc-600">{presetMessage}</p>
+            )}
+          </div>
+
           <div className="space-y-2">
             <label
               htmlFor="instructions"
@@ -135,7 +323,7 @@ export function AnalyzerForm() {
             <textarea
               id="instructions"
               value={instructions}
-              onChange={(event) => setInstructions(event.target.value)}
+              onChange={(event) => updateInstructions(event.target.value)}
               rows={12}
               className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm leading-6 text-zinc-900 outline-none ring-indigo-500 focus:border-indigo-500 focus:ring-2"
               placeholder="Describe how the agent should validate or analyze the document..."
