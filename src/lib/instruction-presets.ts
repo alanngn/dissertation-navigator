@@ -10,7 +10,11 @@ export type InstructionPresetStore = {
   activeId: string | null;
 };
 
-const STORAGE_KEY = "validation-harness:instruction-presets";
+import { getLegacyPresetsKey } from "@/lib/session-user";
+
+function presetsStorageKey(userId: string): string {
+  return `validation-harness:instruction-presets:${userId}`;
+}
 
 export const DEFAULT_INSTRUCTIONS = `Analyze the uploaded document and return:
 1. A brief summary
@@ -24,7 +28,7 @@ export function createPresetId(): string {
   return crypto.randomUUID();
 }
 
-function createDefaultPreset(): InstructionPreset {
+export function createDefaultPreset(): InstructionPreset {
   const now = Date.now();
   return {
     id: createPresetId(),
@@ -34,23 +38,16 @@ function createDefaultPreset(): InstructionPreset {
   };
 }
 
-export function loadInstructionPresets(): InstructionPresetStore {
-  if (typeof window === "undefined") {
-    const preset = createDefaultPreset();
-    return { presets: [preset], activeId: preset.id };
-  }
+export function createDefaultStore(): InstructionPresetStore {
+  const preset = createDefaultPreset();
+  return { presets: [preset], activeId: preset.id };
+}
 
+function parsePresetStore(raw: string): InstructionPresetStore | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      const preset = createDefaultPreset();
-      return { presets: [preset], activeId: preset.id };
-    }
-
     const parsed = JSON.parse(raw) as InstructionPresetStore;
     if (!Array.isArray(parsed.presets) || parsed.presets.length === 0) {
-      const preset = createDefaultPreset();
-      return { presets: [preset], activeId: preset.id };
+      return null;
     }
 
     return {
@@ -58,12 +55,46 @@ export function loadInstructionPresets(): InstructionPresetStore {
       activeId: parsed.activeId ?? parsed.presets[0]?.id ?? null,
     };
   } catch {
-    const preset = createDefaultPreset();
-    return { presets: [preset], activeId: preset.id };
+    return null;
   }
 }
 
-export function saveInstructionPresets(store: InstructionPresetStore): void {
+export function loadInstructionPresetsFromLocal(
+  userId: string,
+): InstructionPresetStore {
+  if (typeof window === "undefined") {
+    return createDefaultStore();
+  }
+
+  const userKey = presetsStorageKey(userId);
+  const userRaw = localStorage.getItem(userKey);
+  if (userRaw) {
+    const store = parsePresetStore(userRaw);
+    if (store) return store;
+  }
+
+  const legacyRaw = localStorage.getItem(getLegacyPresetsKey());
+  if (legacyRaw) {
+    const store = parsePresetStore(legacyRaw);
+    if (store) {
+      saveInstructionPresets(store, userId);
+      localStorage.removeItem(getLegacyPresetsKey());
+      return store;
+    }
+  }
+
+  return createDefaultStore();
+}
+
+/** @deprecated Use loadInstructionPresetsFromLocal(userId) */
+export function loadInstructionPresets(): InstructionPresetStore {
+  return createDefaultStore();
+}
+
+export function saveInstructionPresets(
+  store: InstructionPresetStore,
+  userId: string,
+): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+  localStorage.setItem(presetsStorageKey(userId), JSON.stringify(store));
 }

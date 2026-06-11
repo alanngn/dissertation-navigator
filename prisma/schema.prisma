@@ -1,0 +1,33 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id             String   @id
+  email          String   @unique
+  name           String
+  role           String   @default("user")
+  activePresetId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  presets InstructionPreset[]
+}
+
+model InstructionPreset {
+  id        String   @id
+  userId    String
+  name      String
+  content   String   @db.Text
+  updatedAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
