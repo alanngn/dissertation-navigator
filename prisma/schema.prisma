@@ -20,12 +20,15 @@ model User {
 }
 
 model InstructionPreset {
-  id        String   @id
-  userId    String
-  name      String
-  content   String   @db.Text
-  updatedAt DateTime
-  createdAt DateTime @default(now())
+  id               String   @id
+  userId           String
+  name             String
+  purpose          String   @default("") @db.Text
+  businessFunction String   @default("") @db.Text
+  rules            String[] @default([])
+  content          String   @db.Text
+  updatedAt        DateTime
+  createdAt        DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

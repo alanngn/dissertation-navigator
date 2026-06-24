@@ -6,8 +6,8 @@ import {
   savePresetsToApi,
 } from "@/lib/instruction-presets-api";
 import {
+  composeInstructions,
   createPresetId,
-  DEFAULT_INSTRUCTIONS,
   loadInstructionPresetsFromLocal,
   saveInstructionPresets,
   type InstructionPreset,
@@ -26,13 +26,16 @@ import {
   fetchUsersFromApi,
 } from "@/lib/users-api";
 import type { UserSummary } from "@/lib/users-db";
+import { GLOBAL_WORKSPACE_USER_ID } from "@/lib/seed-agents";
 
 function applyStoreToState(
   store: InstructionPresetStore,
   setters: {
     setPresets: (presets: InstructionPreset[]) => void;
     setActiveId: (activeId: string | null) => void;
-    setInstructions: (instructions: string) => void;
+    setPurpose: (purpose: string) => void;
+    setBusinessFunction: (businessFunction: string) => void;
+    setRules: (rules: string[]) => void;
     setPresetName: (name: string) => void;
   },
 ) {
@@ -40,7 +43,9 @@ function applyStoreToState(
 
   setters.setPresets(store.presets);
   setters.setActiveId(store.activeId);
-  setters.setInstructions(active?.content ?? DEFAULT_INSTRUCTIONS);
+  setters.setPurpose(active?.purpose ?? "");
+  setters.setBusinessFunction(active?.businessFunction ?? "");
+  setters.setRules(active?.rules ?? []);
   setters.setPresetName(active?.name ?? "");
 }
 
@@ -50,7 +55,9 @@ export function useInstructionPresets() {
   const [users, setUsers] = useState<UserSummary[]>([]);
   const [presets, setPresets] = useState<InstructionPreset[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [instructions, setInstructions] = useState(DEFAULT_INSTRUCTIONS);
+  const [purpose, setPurpose] = useState("");
+  const [businessFunction, setBusinessFunction] = useState("");
+  const [rules, setRules] = useState<string[]>([]);
   const [presetName, setPresetName] = useState("");
   const [isDirty, setIsDirty] = useState(false);
   const [ready, setReady] = useState(false);
@@ -62,7 +69,9 @@ export function useInstructionPresets() {
     const setters = {
       setPresets,
       setActiveId,
-      setInstructions,
+      setPurpose,
+      setBusinessFunction,
+      setRules,
       setPresetName,
     };
 
@@ -171,7 +180,9 @@ export function useInstructionPresets() {
       setSelectedUserId(nextSelectedUserId);
       setSelectedUserIdInLocal(nextSelectedUserId);
 
-      await loadPresetsForUser(nextSelectedUserId);
+      // Agents are global for now: every session reads from and writes to the
+      // shared workspace, so seeded agents and edits are visible to everyone.
+      await loadPresetsForUser(GLOBAL_WORKSPACE_USER_ID);
 
       if (!cancelled) {
         setReady(true);
@@ -187,10 +198,12 @@ export function useInstructionPresets() {
 
   const persist = useCallback(
     async (
-      saveUserId: string,
+      _saveUserId: string,
       nextPresets: InstructionPreset[],
       nextActiveId: string | null,
     ) => {
+      // Always persist to the shared workspace so edits are global.
+      const saveUserId = GLOBAL_WORKSPACE_USER_ID;
       const store: InstructionPresetStore = {
         presets: nextPresets,
         activeId: nextActiveId,
@@ -231,7 +244,9 @@ export function useInstructionPresets() {
       setSelectedUserIdInLocal(userId);
 
       try {
-        await loadPresetsForUser(userId);
+        // Agents are global for now, so always load the shared workspace
+        // regardless of which user is selected for viewing.
+        await loadPresetsForUser(GLOBAL_WORKSPACE_USER_ID);
       } finally {
         setSwitchingUser(false);
       }
@@ -243,10 +258,43 @@ export function useInstructionPresets() {
   const isDraft = activeId === null;
   const isViewingSessionUser =
     sessionUserId !== null && selectedUserId === sessionUserId;
-  const canEditPresets = isViewingSessionUser && sessionUserId !== null;
+  // Agents live in a shared workspace, so any signed-in session can edit them.
+  const canEditPresets = sessionUserId !== null;
 
+  const instructions = composeInstructions(purpose, businessFunction, rules);
+
+  function updatePurpose(value: string) {
+    setPurpose(value);
+    setIsDirty(true);
+  }
+
+  function updateBusinessFunction(value: string) {
+    setBusinessFunction(value);
+    setIsDirty(true);
+  }
+
+  function addRule() {
+    setRules((current) => [...current, ""]);
+    setIsDirty(true);
+  }
+
+  function updateRule(index: number, value: string) {
+    setRules((current) =>
+      current.map((rule, i) => (i === index ? value : rule)),
+    );
+    setIsDirty(true);
+  }
+
+  function removeRule(index: number) {
+    setRules((current) => current.filter((_, i) => i !== index));
+    setIsDirty(true);
+  }
+
+  /** @deprecated Prefer the structured updaters (purpose/businessFunction/rules). */
   function updateInstructions(value: string) {
-    setInstructions(value);
+    setPurpose(value);
+    setBusinessFunction("");
+    setRules([]);
     setIsDirty(true);
   }
 
@@ -254,14 +302,20 @@ export function useInstructionPresets() {
     setPresetName(value);
   }
 
+  function applyPresetToState(preset: InstructionPreset) {
+    setPurpose(preset.purpose);
+    setBusinessFunction(preset.businessFunction);
+    setRules(preset.rules);
+    setPresetName(preset.name);
+    setIsDirty(false);
+  }
+
   function selectPreset(id: string) {
     const preset = presets.find((item) => item.id === id);
     if (!preset) return;
 
     setActiveId(id);
-    setInstructions(preset.content);
-    setPresetName(preset.name);
-    setIsDirty(false);
+    applyPresetToState(preset);
 
     if (canEditPresets && sessionUserId) {
       void persist(sessionUserId, presets, id);
@@ -274,7 +328,9 @@ export function useInstructionPresets() {
     }
 
     setActiveId(null);
-    setInstructions("");
+    setPurpose("");
+    setBusinessFunction("");
+    setRules([]);
     setPresetName("");
     setIsDirty(false);
 
@@ -316,8 +372,19 @@ export function useInstructionPresets() {
       } as const;
     }
 
-    const content = instructions.trim();
-    if (!content) return { error: "Instructions cannot be empty." as const };
+    const trimmedRules = rules
+      .map((rule) => rule.trim())
+      .filter((rule) => rule.length > 0);
+    const content = composeInstructions(
+      purpose,
+      businessFunction,
+      trimmedRules,
+    ).trim();
+    if (!content) {
+      return {
+        error: "Add a purpose, business function, or at least one rule." as const,
+      };
+    }
 
     if (activeId) {
       const name = presetName.trim();
@@ -327,12 +394,20 @@ export function useInstructionPresets() {
 
       const nextPresets = presets.map((preset) =>
         preset.id === activeId
-          ? { ...preset, name, content, updatedAt: Date.now() }
+          ? {
+              ...preset,
+              name,
+              purpose: purpose.trim(),
+              businessFunction: businessFunction.trim(),
+              rules: trimmedRules,
+              content,
+              updatedAt: Date.now(),
+            }
           : preset,
       );
       void persist(sessionUserId, nextPresets, activeId);
       setIsDirty(false);
-      return { ok: true as const };
+      return { ok: true as const, id: activeId };
     }
 
     const name = presetName.trim();
@@ -343,6 +418,9 @@ export function useInstructionPresets() {
     const preset: InstructionPreset = {
       id: createPresetId(),
       name,
+      purpose: purpose.trim(),
+      businessFunction: businessFunction.trim(),
+      rules: trimmedRules,
       content,
       updatedAt: Date.now(),
     };
@@ -350,28 +428,51 @@ export function useInstructionPresets() {
     const nextPresets = [...presets, preset];
     void persist(sessionUserId, nextPresets, preset.id);
     setIsDirty(false);
-    return { ok: true as const };
+    return { ok: true as const, id: preset.id };
   }
 
   function deleteActivePreset() {
+    if (!activeId) {
+      return { error: "Nothing to delete." as const };
+    }
+    return deletePresetById(activeId);
+  }
+
+  function deletePresetById(id: string) {
     if (!canEditPresets || !sessionUserId) {
       return { error: "Switch to your session to delete presets." as const };
     }
 
-    if (!activeId) {
-      return { error: "Nothing to delete." as const };
-    }
-
-    const nextPresets = presets.filter((preset) => preset.id !== activeId);
+    const nextPresets = presets.filter((preset) => preset.id !== id);
     if (nextPresets.length === 0) {
-      return { error: "Keep at least one saved preset." as const };
+      return { error: "Keep at least one saved agent." as const };
     }
 
-    const nextActive = nextPresets[0]!;
+    const wasActive = activeId === id;
+    const nextActive = wasActive
+      ? nextPresets[0]!
+      : (presets.find((p) => p.id === activeId) ?? nextPresets[0]!);
+
     void persist(sessionUserId, nextPresets, nextActive.id);
-    setInstructions(nextActive.content);
-    setPresetName(nextActive.name);
-    setIsDirty(false);
+
+    if (wasActive) {
+      applyPresetToState(nextActive);
+    }
+
+    return { ok: true as const };
+  }
+
+  function loadPresetForEditing(id: string) {
+    const preset = presets.find((item) => item.id === id);
+    if (!preset) return { error: "Agent not found." as const };
+
+    setActiveId(id);
+    applyPresetToState(preset);
+
+    if (canEditPresets && sessionUserId) {
+      void persist(sessionUserId, presets, id);
+    }
+
     return { ok: true as const };
   }
 
@@ -392,7 +493,15 @@ export function useInstructionPresets() {
     isDraft,
     isDirty,
     instructions,
+    purpose,
+    businessFunction,
+    rules,
     presetName,
+    updatePurpose,
+    updateBusinessFunction,
+    addRule,
+    updateRule,
+    removeRule,
     updateInstructions,
     updatePresetName,
     commitPresetName,
@@ -400,5 +509,11 @@ export function useInstructionPresets() {
     startNewDraft,
     savePreset,
     deleteActivePreset,
+    deletePresetById,
+    loadPresetForEditing,
   };
 }
+
+export type UseInstructionPresetsReturn = ReturnType<
+  typeof useInstructionPresets
+>;

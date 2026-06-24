@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { isDatabaseConfigured } from "@/lib/db";
 import {
+  ensureGlobalWorkspaceSeeded,
   loadPresetsFromDb,
   savePresetsToDb,
 } from "@/lib/instruction-presets-db";
 import type { InstructionPresetStore } from "@/lib/instruction-presets";
+import { GLOBAL_WORKSPACE_USER_ID } from "@/lib/seed-agents";
 
 function getUserIdFromRequest(request: Request): string | null {
   const url = new URL(request.url);
@@ -26,6 +28,10 @@ function isValidStore(body: unknown): body is InstructionPresetStore {
     (preset) =>
       typeof preset.id === "string" &&
       typeof preset.name === "string" &&
+      typeof preset.purpose === "string" &&
+      typeof preset.businessFunction === "string" &&
+      Array.isArray(preset.rules) &&
+      preset.rules.every((rule) => typeof rule === "string") &&
       typeof preset.content === "string" &&
       typeof preset.updatedAt === "number",
   );
@@ -50,6 +56,10 @@ export async function GET(request: Request) {
   }
 
   try {
+    if (userId === GLOBAL_WORKSPACE_USER_ID) {
+      await ensureGlobalWorkspaceSeeded();
+    }
+
     const store = await loadPresetsFromDb(userId);
 
     if (!store) {

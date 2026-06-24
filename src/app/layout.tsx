@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Validation Agent Test Harness",
+  title: "Dissertation Navigator",
   description:
-    "Upload a document, run validation instructions against OpenAI models, and inspect token usage and cost.",
+    "Run validation agents on dissertations, manage agent instructions, and generate audit reports.",
 };
 
 export default function RootLayout({

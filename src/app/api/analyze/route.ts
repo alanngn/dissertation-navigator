@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { NextRequest, NextResponse } from "next/server";
+import { STRUCTURED_OUTPUT_SYSTEM_APPENDIX, parseStructuredAgentOutput } from "@/lib/audit-types";
 import { extractDocumentText } from "@/lib/document";
 import { calculateCost } from "@/lib/pricing";
 import { DEFAULT_MODEL, getModelById } from "@/lib/models";
@@ -78,16 +79,19 @@ export async function POST(request: NextRequest) {
         {
           role: "system",
           content:
-            "You are a validation agent. Follow the user's instructions precisely when analyzing the provided document. Be thorough, structured, and cite specific evidence from the document when relevant.",
+            "You are a validation agent. Follow the user's instructions precisely when analyzing the provided document. Be thorough, structured, and cite specific evidence from the document when relevant." +
+            STRUCTURED_OUTPUT_SYSTEM_APPENDIX,
         },
         {
           role: "user",
           content: `${instructions.trim()}\n\n---\n\nDOCUMENT (${file.name}):\n\n${documentText}`,
         },
       ],
+      response_format: { type: "json_object" },
     });
 
-    const output = completion.choices[0]?.message?.content?.trim() ?? "";
+    const rawOutput = completion.choices[0]?.message?.content?.trim() ?? "";
+    const structured = parseStructuredAgentOutput(rawOutput);
     const usage = completion.usage;
 
     const tokenUsage = {
@@ -99,7 +103,9 @@ export async function POST(request: NextRequest) {
     const cost = calculateCost(model, tokenUsage);
 
     return NextResponse.json({
-      output,
+      output: rawOutput,
+      summary: structured.summary,
+      findings: structured.findings,
       documentChars: documentText.length,
       usage: cost,
     });
