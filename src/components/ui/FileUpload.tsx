@@ -4,7 +4,7 @@ import { formatBytes } from "@/lib/format";
 import { UploadIcon } from "@/components/ui/icons";
 
 const ACCEPT =
-  ".pdf,.txt,.md,.markdown,.docx,.doc,.csv,.json,.xml,.html,.htm,text/*,application/pdf";
+  ".pdf,.txt,.md,.markdown,.docx,.csv,.json,.xml,.html,.htm,text/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 type FileUploadProps = {
   file: File | null;

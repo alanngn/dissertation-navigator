@@ -1,3 +1,4 @@
+import mammoth from "mammoth";
 import { extractText, getDocumentProxy } from "unpdf";
 
 const TEXT_EXTENSIONS = new Set([
@@ -16,6 +17,15 @@ function getExtension(filename: string): string {
   return parts.length > 1 ? parts.at(-1)! : "";
 }
 
+function isDocx(extension: string, contentType?: string): boolean {
+  const type = contentType?.toLowerCase() ?? "";
+  return (
+    extension === "docx" ||
+    type.includes("wordprocessingml") ||
+    type.includes("officedocument.wordprocessingml")
+  );
+}
+
 export async function extractDocumentText(
   buffer: Buffer,
   filename: string,
@@ -31,11 +41,22 @@ export async function extractDocumentText(
     return text.trim();
   }
 
+  if (isDocx(extension, contentType)) {
+    const { value } = await mammoth.extractRawText({ buffer });
+    return value.trim();
+  }
+
+  if (extension === "doc" || contentType?.toLowerCase().includes("msword")) {
+    throw new Error(
+      'Legacy Word ".doc" files are not supported. Save the file as ".docx" and upload again.',
+    );
+  }
+
   if (TEXT_EXTENSIONS.has(extension) || contentType?.startsWith("text/")) {
     return buffer.toString("utf-8").trim();
   }
 
   throw new Error(
-    `Unsupported file type "${extension || contentType || "unknown"}". Upload PDF or plain-text formats (.txt, .md, .csv, .json).`,
+    `Unsupported file type "${extension || contentType || "unknown"}". Upload PDF, DOCX, or plain-text formats (.txt, .md, .csv, .json).`,
   );
 }
