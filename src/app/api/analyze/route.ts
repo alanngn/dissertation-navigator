@@ -1,8 +1,6 @@
-import OpenAI from "openai";
 import { NextRequest, NextResponse } from "next/server";
-import { STRUCTURED_OUTPUT_SYSTEM_APPENDIX, parseStructuredAgentOutput } from "@/lib/audit-types";
+import { analyzeDocumentWithAgent } from "@/lib/agent-analysis";
 import { extractDocumentText } from "@/lib/document";
-import { calculateCost } from "@/lib/pricing";
 import { DEFAULT_MODEL, getModelById } from "@/lib/models";
 
 export const runtime = "nodejs";
@@ -69,45 +67,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-
-    const completion = await openai.chat.completions.create({
+    const analysis = await analyzeDocumentWithAgent(
+      documentText,
+      file.name,
+      instructions,
       model,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a validation agent. Follow the user's instructions precisely when analyzing the provided document. Be thorough, structured, and cite specific evidence from the document when relevant." +
-            STRUCTURED_OUTPUT_SYSTEM_APPENDIX,
-        },
-        {
-          role: "user",
-          content: `${instructions.trim()}\n\n---\n\nDOCUMENT (${file.name}):\n\n${documentText}`,
-        },
-      ],
-      response_format: { type: "json_object" },
-    });
-
-    const rawOutput = completion.choices[0]?.message?.content?.trim() ?? "";
-    const structured = parseStructuredAgentOutput(rawOutput);
-    const usage = completion.usage;
-
-    const tokenUsage = {
-      promptTokens: usage?.prompt_tokens ?? 0,
-      completionTokens: usage?.completion_tokens ?? 0,
-      totalTokens: usage?.total_tokens ?? 0,
-    };
-
-    const cost = calculateCost(model, tokenUsage);
+    );
 
     return NextResponse.json({
-      output: rawOutput,
-      summary: structured.summary,
-      findings: structured.findings,
+      output: analysis.rawOutput,
+      summary: analysis.summary,
+      findings: analysis.findings,
       documentChars: documentText.length,
-      usage: cost,
+      usage: analysis.usage,
     });
   } catch (error) {
     console.error("Analysis failed:", error);

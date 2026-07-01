@@ -12,6 +12,16 @@ export function formatDate(timestamp: number): string {
   });
 }
 
+export function formatDateTime(timestamp: number): string {
+  return new Date(timestamp).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export function presetDescription(content: string, maxLength = 80): string {
   const line = content.split("\n").find((l) => l.trim())?.trim() ?? "";
   if (line.length <= maxLength) return line;

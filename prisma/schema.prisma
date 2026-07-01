@@ -34,3 +34,50 @@ model InstructionPreset {
 
   @@index([userId])
 }
+
+model AuditRun {
+  id           String   @id
+  slug         String   @unique
+  userId       String?
+  fileName     String
+  agentsRun    Int
+  agentsFailed Int
+  redTotal     Int
+  yellowTotal  Int
+  greenTotal   Int
+  completedAt  DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  agentResults AuditAgentResult[]
+
+  @@index([userId])
+  @@index([slug])
+}
+
+model AuditAgentResult {
+  id         String  @id
+  auditRunId String
+  agentId    String
+  agentName  String
+  status     String
+  summary    String  @default("") @db.Text
+  rawOutput  String  @default("") @db.Text
+  error      String? @db.Text
+
+  auditRun AuditRun       @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
+  findings AuditFinding[]
+
+  @@index([auditRunId])
+}
+
+model AuditFinding {
+  id            String @id
+  agentResultId String
+  severity      String
+  title         String
+  detail        String @db.Text
+
+  agentResult AuditAgentResult @relation(fields: [agentResultId], references: [id], onDelete: Cascade)
+
+  @@index([agentResultId])
+}
