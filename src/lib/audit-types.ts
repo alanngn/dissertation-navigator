@@ -47,26 +47,46 @@ export type AuditSummary = {
   totals: Record<FindingSeverity, number>;
 };
 
+export const MAX_AGENT_OUTPUT_SENTENCES = 2;
+
+export function truncateToMaxSentences(
+  text: string,
+  maxSentences = MAX_AGENT_OUTPUT_SENTENCES,
+): string {
+  const trimmed = text.trim();
+  if (!trimmed || maxSentences < 1) return trimmed;
+
+  const sentences = trimmed.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g);
+  if (!sentences || sentences.length <= maxSentences) return trimmed;
+
+  return sentences.slice(0, maxSentences).join("").trim();
+}
+
 export const STRUCTURED_OUTPUT_SYSTEM_APPENDIX = `
 
 You MUST respond with ONLY valid JSON (no markdown fences, no extra text) matching this exact schema:
 {
-  "summary": "One-sentence overall assessment for this agent's domain",
+  "summary": "Overall assessment for this agent's domain (max 2 sentences)",
   "findings": [
     {
       "severity": "red" | "yellow" | "green",
-      "title": "Short label",
-      "detail": "Explanation with specific evidence from the document"
+      "title": "Short label (a few words)",
+      "detail": "Brief explanation with key evidence (max 2 sentences)"
     }
   ]
 }
+
+Conciseness (required):
+- Keep every summary and finding detail to at most 2 sentences. No exceptions.
+- Lead with the conclusion; cite only the most relevant evidence.
+- Prefer fewer findings over verbose ones. Omit low-value observations.
 
 Severity definitions:
 - "red": Critical issues or recommendations that must be addressed
 - "yellow": Moderate recommendations for improvement
 - "green": Strengths, well-done elements, or positive observations
 
-Include multiple findings across severities when applicable. Be specific and cite evidence from the document.`;
+Include multiple findings across severities when applicable.`;
 
 function normalizeSeverity(value: unknown): FindingSeverity | null {
   if (typeof value !== "string") return null;
@@ -94,7 +114,11 @@ function normalizeFinding(raw: unknown): AgentFinding | null {
         : "";
 
   if (!severity || !title) return null;
-  return { severity, title, detail: detail || title };
+  return {
+    severity,
+    title,
+    detail: truncateToMaxSentences(detail || title),
+  };
 }
 
 export function parseStructuredAgentOutput(raw: string): StructuredAgentOutput {
@@ -119,7 +143,7 @@ export function parseStructuredAgentOutput(raw: string): StructuredAgentOutput {
 
       if (findings.length > 0) {
         return {
-          summary: summary || "Analysis complete.",
+          summary: truncateToMaxSentences(summary || "Analysis complete."),
           findings,
         };
       }

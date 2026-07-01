@@ -41,7 +41,7 @@ export async function analyzeDocumentWithAgent(
         {
           role: "system",
           content:
-            "You are a validation agent. Follow the user's instructions precisely when analyzing the provided document. Be thorough, structured, and cite specific evidence from the document when relevant." +
+            "You are a validation agent. Follow the user's instructions precisely when analyzing the provided document. Be concise: every summary and finding detail must be at most 2 sentences. Lead with the conclusion and cite only the strongest evidence." +
             STRUCTURED_OUTPUT_SYSTEM_APPENDIX,
         },
         {
