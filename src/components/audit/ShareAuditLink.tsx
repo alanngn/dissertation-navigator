@@ -10,22 +10,24 @@ type ShareAuditLinkProps = {
   variant?: "prominent" | "compact";
 };
 
-function buildShareUrl(slug: string): string {
-  if (typeof window === "undefined") {
-    return `/audits/${slug}`;
-  }
-  return `${window.location.origin}/audits/${slug}`;
+function sharePath(slug: string): string {
+  return `/share/${slug}`;
+}
+
+function absoluteShareUrl(slug: string): string {
+  return `${window.location.origin}${sharePath(slug)}`;
 }
 
 export function ShareAuditLink({
   slug,
   variant = "prominent",
 }: ShareAuditLinkProps) {
-  const [shareUrl, setShareUrl] = useState(() => buildShareUrl(slug));
+  // Relative path on first render so SSR and hydration match; upgrade after mount.
+  const [shareUrl, setShareUrl] = useState(() => sharePath(slug));
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    setShareUrl(buildShareUrl(slug));
+    setShareUrl(absoluteShareUrl(slug));
   }, [slug]);
 
   useEffect(() => {
@@ -35,11 +37,12 @@ export function ShareAuditLink({
   }, [copied]);
 
   async function handleCopy() {
+    const url = absoluteShareUrl(slug);
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      await navigator.clipboard.writeText(url);
       setCopied(true);
     } catch {
-      window.prompt("Copy this link:", shareUrl);
+      window.prompt("Copy this link:", url);
     }
   }
 
@@ -47,7 +50,7 @@ export function ShareAuditLink({
     return (
       <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-4 text-left">
         <p className="text-xs font-medium uppercase tracking-wide text-indigo-600">
-          Shareable link
+          Shareable read-only link
         </p>
         <p className="mt-2 truncate font-mono text-xs text-zinc-600">
           {shareUrl}
@@ -89,7 +92,7 @@ export function ShareAuditLink({
               Share this audit
             </h2>
             <p className="mt-0.5 text-sm text-zinc-600">
-              Anyone with the link can view this report.
+              Anyone with the link can view this report (read-only).
             </p>
           </div>
         </div>

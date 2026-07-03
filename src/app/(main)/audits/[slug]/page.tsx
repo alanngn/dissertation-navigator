@@ -48,7 +48,7 @@ export default async function AuditPage({ params }: AuditPageProps) {
         <ShareAuditLink slug={report.slug} />
       </div>
 
-      <AuditReportPanel report={report} />
+      <AuditReportPanel report={report} editable />
     </div>
   );
 }

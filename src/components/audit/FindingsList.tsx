@@ -1,52 +1,158 @@
-import type { AgentFinding, FindingSeverity } from "@/lib/audit-types";
+"use client";
 
-export type DisplayFinding = AgentFinding & { agentName?: string };
+import { useState } from "react";
+import {
+  FindingForm,
+  NEW_SECTION_VALUE,
+  type FindingFormValues,
+} from "@/components/audit/FindingForm";
+import { SEVERITY_CONFIG } from "@/components/audit/severity-config";
+import { PencilIcon, PlusIcon, TrashIcon } from "@/components/ui/icons";
+import type { AgentFinding } from "@/lib/audit-types";
 
-const SEVERITY_CONFIG: Record<
-  FindingSeverity,
-  { label: string; dot: string; text: string; border: string }
-> = {
-  red: {
-    label: "Critical",
-    dot: "bg-red-500",
-    text: "text-red-800",
-    border: "border-red-200",
-  },
-  yellow: {
-    label: "Moderate",
-    dot: "bg-amber-400",
-    text: "text-amber-900",
-    border: "border-amber-200",
-  },
-  green: {
-    label: "Strengths",
-    dot: "bg-emerald-500",
-    text: "text-emerald-800",
-    border: "border-emerald-200",
-  },
+export type DisplayFinding = AgentFinding & {
+  agentName?: string;
+  agentResultId?: string;
+};
+
+export type SectionTarget =
+  | { sectionId: string }
+  | { sectionName: string };
+
+export type FindingsEditor = {
+  sectionOptions?: Array<{ id: string; name: string }>;
+  defaultSectionId?: string;
+  allowNewSection?: boolean;
+  onCreate: (values: FindingFormValues, section: SectionTarget) => Promise<void>;
+  onUpdate: (findingId: string, values: FindingFormValues) => Promise<void>;
+  onDelete: (findingId: string) => Promise<void>;
 };
 
 export function FindingsList({
   findings,
+  showSection = false,
   showAgent = false,
+  editor,
 }: {
   findings: DisplayFinding[];
+  showSection?: boolean;
+  /** @deprecated Use showSection */
   showAgent?: boolean;
+  editor?: FindingsEditor;
 }) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [selectedSectionId, setSelectedSectionId] = useState(
+    editor?.defaultSectionId ?? editor?.sectionOptions?.[0]?.id ?? "",
+  );
+  const [newSectionName, setNewSectionName] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const displaySection = showSection || showAgent;
+
   const grouped = {
     red: findings.filter((f) => f.severity === "red"),
     yellow: findings.filter((f) => f.severity === "yellow"),
     green: findings.filter((f) => f.severity === "green"),
   };
 
-  if (findings.length === 0) {
-    return (
-      <p className="text-sm text-zinc-500">No structured findings returned.</p>
+  function startAdding() {
+    setEditingId(null);
+    setNewSectionName("");
+    setSelectedSectionId(
+      editor?.defaultSectionId ??
+        editor?.sectionOptions?.[0]?.id ??
+        (editor?.allowNewSection ? NEW_SECTION_VALUE : ""),
     );
+    setAdding(true);
   }
+
+  async function handleDelete(findingId: string) {
+    if (!editor) return;
+    if (!window.confirm("Delete this finding? This cannot be undone.")) {
+      return;
+    }
+
+    setBusyId(findingId);
+    try {
+      await editor.onDelete(findingId);
+      if (editingId === findingId) setEditingId(null);
+    } catch (error) {
+      window.alert(
+        error instanceof Error ? error.message : "Failed to delete finding.",
+      );
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  const addControls =
+    editor && !adding && editingId === null ? (
+      <button
+        type="button"
+        onClick={startAdding}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-600 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
+      >
+        <PlusIcon className="h-4 w-4" />
+        Add finding
+      </button>
+    ) : null;
+
+  const addForm =
+    editor && adding ? (
+      <FindingForm
+        sectionOptions={
+          editor.defaultSectionId ? undefined : editor.sectionOptions
+        }
+        selectedSectionId={selectedSectionId}
+        onSectionIdChange={
+          editor.defaultSectionId ? undefined : setSelectedSectionId
+        }
+        newSectionName={newSectionName}
+        onNewSectionNameChange={setNewSectionName}
+        allowNewSection={
+          Boolean(editor.allowNewSection) && !editor.defaultSectionId
+        }
+        submitLabel="Add finding"
+        onCancel={() => {
+          setAdding(false);
+          setNewSectionName("");
+        }}
+        onSubmit={async (values) => {
+          if (editor.defaultSectionId) {
+            await editor.onCreate(values, {
+              sectionId: editor.defaultSectionId,
+            });
+          } else if (selectedSectionId === NEW_SECTION_VALUE) {
+            const name = newSectionName.trim();
+            if (!name) {
+              throw new Error("Enter a name for the new section.");
+            }
+            await editor.onCreate(values, { sectionName: name });
+          } else if (selectedSectionId) {
+            await editor.onCreate(values, { sectionId: selectedSectionId });
+          } else {
+            throw new Error("Select a section for this finding.");
+          }
+          setAdding(false);
+          setNewSectionName("");
+        }}
+      />
+    ) : null;
 
   return (
     <div className="space-y-4">
+      {addControls}
+      {addForm}
+
+      {findings.length === 0 && !adding && (
+        <p className="text-sm text-zinc-500">
+          {editor
+            ? "No findings yet. Add one to get started."
+            : "No structured findings returned."}
+        </p>
+      )}
+
       {(["red", "yellow", "green"] as const).map((severity) => {
         const items = grouped[severity];
         if (items.length === 0) return null;
@@ -61,26 +167,81 @@ export function FindingsList({
               {config.label} ({items.length})
             </h4>
             <ul className="space-y-2">
-              {items.map((finding, i) => (
-                <li
-                  key={`${finding.title}-${finding.agentName ?? ""}-${i}`}
-                  className={`rounded-lg border px-4 py-3 ${config.border} bg-white`}
-                >
-                  {showAgent && finding.agentName && (
-                    <p className="mb-1 text-xs font-medium text-zinc-400">
-                      {finding.agentName}
-                    </p>
-                  )}
-                  <p className="text-sm font-medium text-zinc-900">
-                    {finding.title}
-                  </p>
-                  {finding.detail !== finding.title && (
-                    <p className="mt-1 text-sm leading-relaxed text-zinc-600">
-                      {finding.detail}
-                    </p>
-                  )}
-                </li>
-              ))}
+              {items.map((finding, i) => {
+                const findingId = finding.id ?? `${finding.title}-${i}`;
+                const isEditing = editor && editingId === finding.id;
+
+                if (isEditing && finding.id) {
+                  return (
+                    <li key={findingId}>
+                      <FindingForm
+                        initial={{
+                          severity: finding.severity,
+                          title: finding.title,
+                          detail: finding.detail,
+                        }}
+                        submitLabel="Save changes"
+                        onCancel={() => setEditingId(null)}
+                        onSubmit={async (values) => {
+                          await editor.onUpdate(finding.id!, values);
+                          setEditingId(null);
+                        }}
+                      />
+                    </li>
+                  );
+                }
+
+                return (
+                  <li
+                    key={findingId}
+                    className={`rounded-lg border px-4 py-3 ${config.border} bg-white`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="min-w-0 flex-1">
+                        {displaySection && finding.agentName && (
+                          <p className="mb-1 text-xs font-medium text-zinc-400">
+                            {finding.agentName}
+                          </p>
+                        )}
+                        <p className="text-sm font-medium text-zinc-900">
+                          {finding.title}
+                        </p>
+                        {finding.detail !== finding.title && (
+                          <p className="mt-1 text-sm leading-relaxed text-zinc-600">
+                            {finding.detail}
+                          </p>
+                        )}
+                      </div>
+
+                      {editor && finding.id && (
+                        <div className="flex shrink-0 items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAdding(false);
+                              setEditingId(finding.id!);
+                            }}
+                            disabled={busyId === finding.id}
+                            aria-label={`Edit ${finding.title}`}
+                            className="rounded-lg p-1.5 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-50"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleDelete(finding.id!)}
+                            disabled={busyId === finding.id}
+                            aria-label={`Delete ${finding.title}`}
+                            className="rounded-lg p-1.5 text-zinc-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         );
@@ -89,4 +250,4 @@ export function FindingsList({
   );
 }
 
-export { SEVERITY_CONFIG };
+export { SEVERITY_CONFIG } from "@/components/audit/severity-config";

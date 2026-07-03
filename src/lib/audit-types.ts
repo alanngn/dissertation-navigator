@@ -1,6 +1,7 @@
 export type FindingSeverity = "red" | "yellow" | "green";
 
 export type AgentFinding = {
+  id?: string;
   severity: FindingSeverity;
   title: string;
   detail: string;
@@ -9,6 +10,7 @@ export type AgentFinding = {
 export type AttributedFinding = AgentFinding & {
   agentId: string;
   agentName: string;
+  agentResultId?: string;
 };
 
 export type StructuredAgentOutput = {
@@ -17,6 +19,7 @@ export type StructuredAgentOutput = {
 };
 
 export type AgentAuditResult = {
+  id?: string;
   agentId: string;
   agentName: string;
   status: "completed" | "failed";
@@ -227,9 +230,30 @@ export function aggregateFindings(
           ...finding,
           agentId: result.agentId,
           agentName: result.agentName,
+          agentResultId: result.id,
         }))
       : [],
   );
+}
+
+export function isFindingSeverity(value: unknown): value is FindingSeverity {
+  return value === "red" || value === "yellow" || value === "green";
+}
+
+export function normalizeFindingInput(input: {
+  severity: unknown;
+  title: unknown;
+  detail: unknown;
+}): AgentFinding | null {
+  if (!isFindingSeverity(input.severity)) return null;
+  const title = typeof input.title === "string" ? input.title.trim() : "";
+  const detail = typeof input.detail === "string" ? input.detail.trim() : "";
+  if (!title) return null;
+  return {
+    severity: input.severity,
+    title,
+    detail: detail || title,
+  };
 }
 
 export function totalFindingCount(

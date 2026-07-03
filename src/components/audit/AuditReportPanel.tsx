@@ -1,7 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { FindingsList, SEVERITY_CONFIG } from "@/components/audit/FindingsList";
+import { useMemo, useState } from "react";
+import {
+  FindingsList,
+  type FindingsEditor,
+} from "@/components/audit/FindingsList";
+import { SEVERITY_CONFIG } from "@/components/audit/severity-config";
+import type { FindingFormValues } from "@/components/audit/FindingForm";
 import { ChevronRightIcon } from "@/components/ui/icons";
 import { agentColorClass, agentInitial } from "@/lib/agent-display";
 import {
@@ -14,11 +19,13 @@ import {
   totalFindingCount,
 } from "@/lib/audit-types";
 import { formatDate } from "@/lib/format";
+import { parseApiResponse } from "@/lib/parse-api-response";
 
 type ReportView = "overview" | "recommendations";
 
 type AuditReportPanelProps = {
   report: AuditReport;
+  editable?: boolean;
 };
 
 const VIEW_TABS: { id: ReportView; label: string }[] = [
@@ -26,13 +33,89 @@ const VIEW_TABS: { id: ReportView; label: string }[] = [
   { id: "recommendations", label: "All Recommendations" },
 ];
 
-export function AuditReportPanel({ report }: AuditReportPanelProps) {
+type ReportApiResponse = {
+  report?: AuditReport;
+  error?: string;
+};
+
+export function AuditReportPanel({
+  report: initialReport,
+  editable = false,
+}: AuditReportPanelProps) {
+  const [report, setReport] = useState(initialReport);
   const [view, setView] = useState<ReportView>("overview");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const completed = report.agentResults.filter((r) => r.status === "completed");
   const allFindings = aggregateFindings(report.agentResults);
   const findingTotal = totalFindingCount(report);
+
+  const sectionOptions = useMemo(
+    () =>
+      completed
+        .filter((result): result is AgentAuditResult & { id: string } =>
+          Boolean(result.id),
+        )
+        .map((result) => ({
+          id: result.id,
+          name: result.agentName,
+        })),
+    [completed],
+  );
+
+  async function mutateReport(
+    request: Promise<Response>,
+  ): Promise<AuditReport> {
+    const response = await request;
+    const data = await parseApiResponse<ReportApiResponse>(response);
+
+    if (!response.ok || !data.report) {
+      throw new Error(data.error ?? "Failed to update finding.");
+    }
+
+    setReport(data.report);
+    return data.report;
+  }
+
+  function createEditor(defaultSectionId?: string): FindingsEditor | undefined {
+    if (!editable) return undefined;
+
+    return {
+      sectionOptions,
+      defaultSectionId,
+      allowNewSection: !defaultSectionId,
+      onCreate: async (values, section) => {
+        await mutateReport(
+          fetch(`/api/audits/${report.slug}/findings`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...values,
+              ...("sectionName" in section
+                ? { sectionName: section.sectionName }
+                : { sectionId: section.sectionId }),
+            }),
+          }),
+        );
+      },
+      onUpdate: async (findingId, values: FindingFormValues) => {
+        await mutateReport(
+          fetch(`/api/audits/${report.slug}/findings/${findingId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(values),
+          }),
+        );
+      },
+      onDelete: async (findingId) => {
+        await mutateReport(
+          fetch(`/api/audits/${report.slug}/findings/${findingId}`, {
+            method: "DELETE",
+          }),
+        );
+      },
+    };
+  }
 
   return (
     <section className="rounded-2xl border border-zinc-200 bg-white shadow-sm">
@@ -76,6 +159,8 @@ export function AuditReportPanel({ report }: AuditReportPanelProps) {
             completedCount={completed.length}
             findingTotal={findingTotal}
             expandedId={expandedId}
+            editable={editable}
+            createEditor={createEditor}
             onToggleAgent={(agentId) =>
               setExpandedId((current) => (current === agentId ? null : agentId))
             }
@@ -84,9 +169,14 @@ export function AuditReportPanel({ report }: AuditReportPanelProps) {
         ) : (
           <div>
             <p className="mb-4 text-sm text-zinc-500">
-              {findingTotal} findings across {completed.length} agents
+              {findingTotal} findings across {completed.length} sections
+              {editable ? ". Edit, add, or remove findings below." : ""}
             </p>
-            <FindingsList findings={allFindings} showAgent />
+            <FindingsList
+              findings={allFindings}
+              showSection
+              editor={createEditor()}
+            />
           </div>
         )}
       </div>
@@ -99,6 +189,8 @@ function OverviewView({
   completedCount,
   findingTotal,
   expandedId,
+  editable,
+  createEditor,
   onToggleAgent,
   onViewRecommendations,
 }: {
@@ -106,6 +198,8 @@ function OverviewView({
   completedCount: number;
   findingTotal: number;
   expandedId: string | null;
+  editable: boolean;
+  createEditor: (defaultSectionId?: string) => FindingsEditor | undefined;
   onToggleAgent: (agentId: string) => void;
   onViewRecommendations: () => void;
 }) {
@@ -115,8 +209,8 @@ function OverviewView({
     <div className="space-y-5">
       <div className="rounded-xl bg-zinc-50 px-4 py-4">
         <p className="text-sm font-medium text-zinc-900">
-          {completedCount}/{report.agentsRun} agents completed · {findingTotal}{" "}
-          total findings
+          {completedCount}/{report.agentsRun} sections completed ·{" "}
+          {findingTotal} total findings
         </p>
         <p className="mt-1 text-sm text-zinc-500">
           {hasCritical
@@ -129,15 +223,20 @@ function OverviewView({
 
       <div>
         <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-          By Agent
+          By Section
         </h3>
         <div className="overflow-hidden rounded-xl border border-zinc-200 divide-y divide-zinc-100">
           {report.agentResults.map((result, index) => (
             <AgentAccordionRow
-              key={result.agentId}
+              key={result.id ?? result.agentId}
               result={result}
               index={index}
               expanded={expandedId === result.agentId}
+              editor={
+                editable && result.id
+                  ? createEditor(result.id)
+                  : undefined
+              }
               onToggle={() => onToggleAgent(result.agentId)}
             />
           ))}
@@ -159,11 +258,13 @@ function AgentAccordionRow({
   result,
   index,
   expanded,
+  editor,
   onToggle,
 }: {
   result: AgentAuditResult;
   index: number;
   expanded: boolean;
+  editor?: FindingsEditor;
   onToggle: () => void;
 }) {
   const counts =
@@ -226,7 +327,7 @@ function AgentAccordionRow({
 
       {expanded && result.status === "completed" && (
         <div className="border-t border-zinc-100 bg-zinc-50/50 px-4 py-4">
-          <FindingsList findings={result.findings} />
+          <FindingsList findings={result.findings} editor={editor} />
         </div>
       )}
     </div>
