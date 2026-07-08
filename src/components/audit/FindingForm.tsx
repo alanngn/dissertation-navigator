@@ -6,7 +6,7 @@ import type { AgentFinding, FindingSeverity } from "@/lib/audit-types";
 
 export type FindingFormValues = Pick<
   AgentFinding,
-  "severity" | "title" | "detail"
+  "severity" | "title" | "detail" | "example"
 >;
 
 export const NEW_SECTION_VALUE = "__new_section__";
@@ -43,6 +43,7 @@ export function FindingForm({
   );
   const [title, setTitle] = useState(initial?.title ?? "");
   const [detail, setDetail] = useState(initial?.detail ?? "");
+  const [example, setExample] = useState(initial?.example ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,6 +56,7 @@ export function FindingForm({
     setSeverity(initial?.severity ?? "yellow");
     setTitle(initial?.title ?? "");
     setDetail(initial?.detail ?? "");
+    setExample(initial?.example ?? "");
     setError(null);
   }, [initial]);
 
@@ -62,6 +64,7 @@ export function FindingForm({
     event.preventDefault();
     const trimmedTitle = title.trim();
     const trimmedDetail = detail.trim();
+    const trimmedExample = example.trim();
 
     if (!trimmedTitle) {
       setError("Title is required.");
@@ -87,6 +90,10 @@ export function FindingForm({
         severity,
         title: trimmedTitle,
         detail: trimmedDetail || trimmedTitle,
+        example:
+          severity === "red" || severity === "yellow"
+            ? trimmedExample || undefined
+            : undefined,
       });
     } catch (submitError) {
       setError(
@@ -198,6 +205,24 @@ export function FindingForm({
           className="w-full resize-y rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
         />
       </label>
+
+      {(severity === "red" || severity === "yellow") && (
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-zinc-600">
+            Example
+            <span className="ml-1 font-normal text-zinc-400">
+              (generic illustration of good practice)
+            </span>
+          </span>
+          <textarea
+            value={example}
+            onChange={(event) => setExample(event.target.value)}
+            rows={3}
+            placeholder="A generic sample demonstrating what strong writing looks like for this recommendation"
+            className="w-full resize-y rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+          />
+        </label>
+      )}
 
       {error && (
         <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

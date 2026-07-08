@@ -19,13 +19,25 @@ model User {
   presets InstructionPreset[]
 }
 
+/// Singleton platform governance settings inherited by every agent at runtime.
+model PlatformSettings {
+  id        String   @id @default("platform")
+  version   String   @default("1.0")
+  preamble  String   @default("") @db.Text
+  /// Platform rules as JSON array of { text, priority: "critical" | "moderate" }.
+  rules     Json     @default("[]")
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
 model InstructionPreset {
   id               String   @id
   userId           String
   name             String
   purpose          String   @default("") @db.Text
   businessFunction String   @default("") @db.Text
-  rules            String[] @default([])
+  /// Agent rules as JSON array of { text, priority: "critical" | "moderate" }.
+  rules            Json     @default("[]")
   content          String   @db.Text
   updatedAt        DateTime
   createdAt        DateTime @default(now())
@@ -71,11 +83,12 @@ model AuditAgentResult {
 }
 
 model AuditFinding {
-  id            String @id
+  id            String  @id
   agentResultId String
   severity      String
   title         String
-  detail        String @db.Text
+  detail        String  @db.Text
+  example       String? @db.Text
 
   agentResult AuditAgentResult @relation(fields: [agentResultId], references: [id], onDelete: Cascade)
 

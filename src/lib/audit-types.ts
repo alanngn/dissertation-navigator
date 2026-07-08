@@ -5,6 +5,8 @@ export type AgentFinding = {
   severity: FindingSeverity;
   title: string;
   detail: string;
+  /** Generic illustration of good practice — only for recommendations (red/yellow). */
+  example?: string;
 };
 
 export type AttributedFinding = AgentFinding & {
@@ -51,6 +53,7 @@ export type AuditSummary = {
 };
 
 export const MAX_AGENT_OUTPUT_SENTENCES = 2;
+export const MAX_EXAMPLE_SENTENCES = 4;
 
 export function truncateToMaxSentences(
   text: string,
@@ -74,7 +77,8 @@ You MUST respond with ONLY valid JSON (no markdown fences, no extra text) matchi
     {
       "severity": "red" | "yellow" | "green",
       "title": "Short label (a few words)",
-      "detail": "Brief explanation with key evidence (max 2 sentences)"
+      "detail": "Brief explanation with key evidence (max 2 sentences)",
+      "example": "Optional. Required for red and yellow findings — see below."
     }
   ]
 }
@@ -89,7 +93,11 @@ Severity definitions:
 - "yellow": Moderate recommendations for improvement
 - "green": Strengths, well-done elements, or positive observations
 
-Include multiple findings across severities when applicable.`;
+Recommendations (red and yellow) must include an "example" field:
+- Provide a generic, illustrative sample that demonstrates good practice for the recommendation.
+- Do NOT write or rewrite the student's dissertation content. Use placeholder topics (e.g. "a study of teacher retention") rather than their specific subject matter.
+- The example should teach the student what strong writing looks like for this type of issue (max 4 sentences).
+- Omit "example" (or set to null) for green findings.`;
 
 function normalizeSeverity(value: unknown): FindingSeverity | null {
   if (typeof value !== "string") return null;
@@ -117,11 +125,28 @@ function normalizeFinding(raw: unknown): AgentFinding | null {
         : "";
 
   if (!severity || !title) return null;
-  return {
+
+  const rawExample =
+    typeof item.example === "string"
+      ? item.example.trim()
+      : typeof item.sample === "string"
+        ? item.sample.trim()
+        : "";
+
+  const finding: AgentFinding = {
     severity,
     title,
     detail: truncateToMaxSentences(detail || title),
   };
+
+  if (rawExample && (severity === "red" || severity === "yellow")) {
+    finding.example = truncateToMaxSentences(
+      rawExample,
+      MAX_EXAMPLE_SENTENCES,
+    );
+  }
+
+  return finding;
 }
 
 export function parseStructuredAgentOutput(raw: string): StructuredAgentOutput {
@@ -244,16 +269,29 @@ export function normalizeFindingInput(input: {
   severity: unknown;
   title: unknown;
   detail: unknown;
+  example?: unknown;
 }): AgentFinding | null {
   if (!isFindingSeverity(input.severity)) return null;
   const title = typeof input.title === "string" ? input.title.trim() : "";
   const detail = typeof input.detail === "string" ? input.detail.trim() : "";
+  const rawExample =
+    typeof input.example === "string" ? input.example.trim() : "";
   if (!title) return null;
-  return {
+
+  const finding: AgentFinding = {
     severity: input.severity,
     title,
     detail: detail || title,
   };
+
+  if (
+    rawExample &&
+    (input.severity === "red" || input.severity === "yellow")
+  ) {
+    finding.example = rawExample;
+  }
+
+  return finding;
 }
 
 export function totalFindingCount(

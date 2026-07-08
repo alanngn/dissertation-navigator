@@ -15,7 +15,7 @@ type SaveAuditInput = {
   agentResults: AgentAuditResult[];
 };
 
-type FindingInput = Pick<AgentFinding, "severity" | "title" | "detail">;
+type FindingInput = Pick<AgentFinding, "severity" | "title" | "detail" | "example">;
 
 function toAuditReport(
   run: {
@@ -41,6 +41,7 @@ function toAuditReport(
         severity: string;
         title: string;
         detail: string;
+        example: string | null;
       }>;
     }>;
   },
@@ -68,6 +69,7 @@ function toAuditReport(
         severity: finding.severity as FindingSeverity,
         title: finding.title,
         detail: finding.detail,
+        ...(finding.example ? { example: finding.example } : {}),
       })),
       rawOutput: result.rawOutput,
       error: result.error ?? undefined,
@@ -120,6 +122,7 @@ export async function saveAuditRun(input: SaveAuditInput): Promise<AuditReport> 
                     severity: finding.severity,
                     title: finding.title,
                     detail: finding.detail,
+                    example: finding.example ?? null,
                   })),
                 },
               }
@@ -294,6 +297,7 @@ export async function createAuditFinding(
               severity: input.severity,
               title: input.title,
               detail: input.detail,
+              example: input.example ?? null,
             },
           ],
         },
@@ -327,6 +331,7 @@ export async function createAuditFinding(
       severity: input.severity,
       title: input.title,
       detail: input.detail,
+      example: input.example ?? null,
     },
   });
 
@@ -359,6 +364,7 @@ export async function updateAuditFinding(
       severity: input.severity,
       title: input.title,
       detail: input.detail,
+      example: input.example ?? null,
     },
   });
 

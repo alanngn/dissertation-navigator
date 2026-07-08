@@ -55,6 +55,7 @@ export async function POST(request: Request, context: RouteContext) {
     severity: payload.severity,
     title: payload.title,
     detail: payload.detail,
+    example: payload.example,
   });
 
   if (!finding) {

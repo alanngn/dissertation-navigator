@@ -1,5 +1,6 @@
 import {
   composeInstructions,
+  type AgentRule,
   type InstructionPreset,
 } from "@/lib/instruction-presets";
 
@@ -19,8 +20,14 @@ type SeedAgent = {
   name: string;
   purpose: string;
   businessFunction: string;
+  /** Seed rules as plain text; converted to prioritized AgentRule objects on build. */
   rules: string[];
 };
+
+/** Seeded evaluation rules are doctoral must-haves → critical by default. */
+function toAgentRules(rules: string[]): AgentRule[] {
+  return rules.map((text) => ({ text, priority: "critical" as const }));
+}
 
 /**
  * The dissertation validation agents (#2–#9) that ship with the product.
@@ -211,17 +218,20 @@ export const SEED_AGENTS: SeedAgent[] = [
 export function buildSeededPresets(): InstructionPreset[] {
   const seededAt = Date.UTC(2025, 5, 24);
 
-  return SEED_AGENTS.map((agent) => ({
-    id: agent.id,
-    name: agent.name,
-    purpose: agent.purpose,
-    businessFunction: agent.businessFunction,
-    rules: [...agent.rules],
-    content: composeInstructions(
-      agent.purpose,
-      agent.businessFunction,
-      agent.rules,
-    ),
-    updatedAt: seededAt,
-  }));
+  return SEED_AGENTS.map((agent) => {
+    const rules = toAgentRules(agent.rules);
+    return {
+      id: agent.id,
+      name: agent.name,
+      purpose: agent.purpose,
+      businessFunction: agent.businessFunction,
+      rules,
+      content: composeInstructions(
+        agent.purpose,
+        agent.businessFunction,
+        rules,
+      ),
+      updatedAt: seededAt,
+    };
+  });
 }

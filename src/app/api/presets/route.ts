@@ -5,7 +5,10 @@ import {
   loadPresetsFromDb,
   savePresetsToDb,
 } from "@/lib/instruction-presets-db";
-import type { InstructionPresetStore } from "@/lib/instruction-presets";
+import {
+  isAgentRulePriority,
+  type InstructionPresetStore,
+} from "@/lib/instruction-presets";
 import { GLOBAL_WORKSPACE_USER_ID } from "@/lib/seed-agents";
 
 function getUserIdFromRequest(request: Request): string | null {
@@ -16,6 +19,14 @@ function getUserIdFromRequest(request: Request): string | null {
   }
 
   return null;
+}
+
+function isValidRule(rule: unknown): boolean {
+  if (!rule || typeof rule !== "object") return false;
+  const candidate = rule as { text?: unknown; priority?: unknown };
+  return (
+    typeof candidate.text === "string" && isAgentRulePriority(candidate.priority)
+  );
 }
 
 function isValidStore(body: unknown): body is InstructionPresetStore {
@@ -31,7 +42,7 @@ function isValidStore(body: unknown): body is InstructionPresetStore {
       typeof preset.purpose === "string" &&
       typeof preset.businessFunction === "string" &&
       Array.isArray(preset.rules) &&
-      preset.rules.every((rule) => typeof rule === "string") &&
+      preset.rules.every(isValidRule) &&
       typeof preset.content === "string" &&
       typeof preset.updatedAt === "number",
   );

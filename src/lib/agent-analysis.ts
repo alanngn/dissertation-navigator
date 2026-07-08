@@ -7,6 +7,8 @@ import {
 import { formatAnalysisError } from "@/lib/analysis-errors";
 import { calculateCost } from "@/lib/pricing";
 import { DEFAULT_MODEL, getModelById } from "@/lib/models";
+import { formatPlatformRulesForPrompt } from "@/lib/platform-settings";
+import { getPlatformSettingsForAnalysis } from "@/lib/platform-settings-db";
 
 export type AgentAnalysisResult = {
   summary: string;
@@ -33,6 +35,9 @@ export async function analyzeDocumentWithAgent(
     apiKey: process.env.OPENAI_API_KEY,
   });
 
+  const platformSettings = await getPlatformSettingsForAnalysis();
+  const platformGovernance = formatPlatformRulesForPrompt(platformSettings);
+
   let completion;
   try {
     completion = await openai.chat.completions.create({
@@ -41,7 +46,8 @@ export async function analyzeDocumentWithAgent(
         {
           role: "system",
           content:
-            "You are a validation agent. Follow the user's instructions precisely when analyzing the provided document. Be concise: every summary and finding detail must be at most 2 sentences. Lead with the conclusion and cite only the strongest evidence." +
+            "You are a validation agent. Follow the user's instructions precisely when analyzing the provided document. Be concise: every summary and finding detail must be at most 2 sentences. Lead with the conclusion and cite only the strongest evidence. For red and yellow recommendations, always include a generic example field that illustrates good practice without writing the student's dissertation content.\n\n" +
+            platformGovernance +
             STRUCTURED_OUTPUT_SYSTEM_APPENDIX,
         },
         {

@@ -9,6 +9,10 @@ import { FileUpload } from "@/components/ui/FileUpload";
 import { ArrowLeftIcon, PlusIcon, TrashIcon } from "@/components/ui/icons";
 import { FindingsList } from "@/components/audit/FindingsList";
 import { useAnalyze } from "@/hooks/useAnalyze";
+import {
+  RULE_PRIORITY_LABELS,
+  type AgentRulePriority,
+} from "@/lib/instruction-presets";
 import { DEFAULT_MODEL, MODELS } from "@/lib/models";
 
 const MAX_PURPOSE = 2000;
@@ -37,6 +41,7 @@ export function AgentEditorPage({ agentId }: AgentEditorPageProps) {
     updateBusinessFunction,
     addRule,
     updateRule,
+    updateRulePriority,
     removeRule,
     updatePresetName,
     commitPresetName,
@@ -209,7 +214,11 @@ export function AgentEditorPage({ agentId }: AgentEditorPageProps) {
             </h1>
             <p className="mt-1 text-sm text-zinc-500">
               Define the purpose, business function, and rules used to build this
-              agent&apos;s audit prompt.
+              agent&apos;s audit prompt.{" "}
+              <Link href="/settings" className="font-medium text-indigo-600 hover:text-indigo-500">
+                Platform rules
+              </Link>{" "}
+              are inherited automatically at runtime.
             </p>
 
             {readOnly && (
@@ -302,7 +311,8 @@ export function AgentEditorPage({ agentId }: AgentEditorPageProps) {
                 </div>
                 <p className="text-xs text-zinc-500">
                   Add, edit, or remove the individual rules this agent enforces.
-                  Each rule is numbered automatically in the prompt.
+                  Set each rule to Critical or Moderate so findings reflect its
+                  weight.
                 </p>
 
                 {rules.length === 0 ? (
@@ -310,32 +320,47 @@ export function AgentEditorPage({ agentId }: AgentEditorPageProps) {
                     No rules yet. Add the first rule below.
                   </p>
                 ) : (
-                  <ul className="space-y-2">
+                  <ul className="space-y-3">
                     {rules.map((rule, index) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <span className="mt-2.5 shrink-0 text-xs font-medium text-zinc-400">
-                          Rule {index + 1}
-                        </span>
+                      <li
+                        key={index}
+                        className="rounded-xl border border-zinc-200 bg-zinc-50/60 p-3"
+                      >
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <span className="text-xs font-medium text-zinc-500">
+                            Rule {index + 1}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <PriorityToggle
+                              value={rule.priority}
+                              disabled={readOnly}
+                              onChange={(priority) =>
+                                updateRulePriority(index, priority)
+                              }
+                              ruleIndex={index}
+                            />
+                            {!readOnly && (
+                              <button
+                                type="button"
+                                onClick={() => removeRule(index)}
+                                title="Remove rule"
+                                className="shrink-0 rounded-lg p-1.5 text-zinc-400 transition hover:bg-red-50 hover:text-red-600"
+                              >
+                                <TrashIcon />
+                              </button>
+                            )}
+                          </div>
+                        </div>
                         <textarea
-                          value={rule}
+                          value={rule.text}
                           onChange={(e) =>
                             updateRule(index, e.target.value.slice(0, MAX_RULE))
                           }
                           rows={2}
                           disabled={readOnly}
                           placeholder="The title must be concise, scholarly, and professional."
-                          className="min-w-0 flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm leading-6 outline-none ring-indigo-500 focus:border-indigo-500 focus:ring-2 disabled:bg-zinc-50"
+                          className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm leading-6 outline-none ring-indigo-500 focus:border-indigo-500 focus:ring-2 disabled:bg-zinc-50"
                         />
-                        {!readOnly && (
-                          <button
-                            type="button"
-                            onClick={() => removeRule(index)}
-                            title="Remove rule"
-                            className="mt-1 shrink-0 rounded-lg p-2 text-zinc-400 transition hover:bg-red-50 hover:text-red-600"
-                          >
-                            <TrashIcon />
-                          </button>
-                        )}
                       </li>
                     ))}
                   </ul>
@@ -482,6 +507,61 @@ export function AgentEditorPage({ agentId }: AgentEditorPageProps) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PriorityToggle({
+  value,
+  disabled,
+  onChange,
+  ruleIndex,
+}: {
+  value: AgentRulePriority;
+  disabled?: boolean;
+  onChange: (priority: AgentRulePriority) => void;
+  ruleIndex: number;
+}) {
+  const options: {
+    priority: AgentRulePriority;
+    activeClass: string;
+    idleClass: string;
+  }[] = [
+    {
+      priority: "critical",
+      activeClass: "bg-red-600 text-white shadow-sm",
+      idleClass: "text-zinc-500 hover:bg-red-50 hover:text-red-700",
+    },
+    {
+      priority: "moderate",
+      activeClass: "bg-amber-500 text-white shadow-sm",
+      idleClass: "text-zinc-500 hover:bg-amber-50 hover:text-amber-800",
+    },
+  ];
+
+  return (
+    <div
+      role="group"
+      aria-label={`Priority for rule ${ruleIndex + 1}`}
+      className="inline-flex rounded-lg bg-white p-0.5 ring-1 ring-zinc-200"
+    >
+      {options.map((option) => {
+        const selected = value === option.priority;
+        return (
+          <button
+            key={option.priority}
+            type="button"
+            disabled={disabled}
+            aria-pressed={selected}
+            onClick={() => onChange(option.priority)}
+            className={`rounded-md px-2.5 py-1 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
+              selected ? option.activeClass : option.idleClass
+            }`}
+          >
+            {RULE_PRIORITY_LABELS[option.priority]}
+          </button>
+        );
+      })}
     </div>
   );
 }

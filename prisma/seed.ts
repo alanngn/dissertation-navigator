@@ -15,10 +15,16 @@ async function main() {
   const { ensureGlobalWorkspaceSeeded } = await import(
     "@/lib/instruction-presets-db"
   );
+  const { ensurePlatformSettingsSeeded } = await import(
+    "@/lib/platform-settings-db"
+  );
   const { getPrisma } = await import("@/lib/db");
 
   await ensureGlobalWorkspaceSeeded();
   console.log("Seeded shared-workspace validation agents.");
+
+  await ensurePlatformSettingsSeeded();
+  console.log("Seeded platform governance settings.");
 
   await getPrisma().$disconnect();
 }

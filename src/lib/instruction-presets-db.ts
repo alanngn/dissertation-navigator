@@ -1,6 +1,9 @@
+import { Prisma } from "@/generated/prisma/client";
 import { getPrisma } from "@/lib/db";
 import {
   normalizePreset,
+  normalizeRules,
+  type AgentRule,
   type InstructionPreset,
   type InstructionPresetStore,
 } from "@/lib/instruction-presets";
@@ -12,12 +15,16 @@ import {
 } from "@/lib/seed-agents";
 import { ensureUser } from "@/lib/users-db";
 
+function rulesToJson(rules: AgentRule[]): Prisma.InputJsonValue {
+  return rules as unknown as Prisma.InputJsonValue;
+}
+
 function toClientPreset(preset: {
   id: string;
   name: string;
   purpose: string;
   businessFunction: string;
-  rules: string[];
+  rules: unknown;
   content: string;
   updatedAt: Date;
 }): InstructionPreset {
@@ -26,7 +33,7 @@ function toClientPreset(preset: {
     name: preset.name,
     purpose: preset.purpose,
     businessFunction: preset.businessFunction,
-    rules: preset.rules,
+    rules: normalizeRules(preset.rules),
     content: preset.content,
     updatedAt: preset.updatedAt.getTime(),
   });
@@ -62,7 +69,7 @@ export async function ensureGlobalWorkspaceSeeded(): Promise<void> {
       name: preset.name,
       purpose: preset.purpose,
       businessFunction: preset.businessFunction,
-      rules: preset.rules,
+      rules: rulesToJson(preset.rules),
       content: preset.content,
       updatedAt: new Date(preset.updatedAt),
     })),
@@ -132,7 +139,7 @@ export async function savePresetsToDb(
           name: preset.name,
           purpose: preset.purpose,
           businessFunction: preset.businessFunction,
-          rules: preset.rules,
+          rules: rulesToJson(preset.rules),
           content: preset.content,
           updatedAt: new Date(preset.updatedAt),
         },
@@ -140,7 +147,7 @@ export async function savePresetsToDb(
           name: preset.name,
           purpose: preset.purpose,
           businessFunction: preset.businessFunction,
-          rules: preset.rules,
+          rules: rulesToJson(preset.rules),
           content: preset.content,
           updatedAt: new Date(preset.updatedAt),
         },

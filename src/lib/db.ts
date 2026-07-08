@@ -6,7 +6,7 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 /** Bump when new models are added so dev hot-reload picks up schema changes. */
-const PRISMA_SCHEMA_GENERATION = 2;
+const PRISMA_SCHEMA_GENERATION = 4;
 
 const globalForPrismaMeta = globalThis as unknown as {
   prismaSchemaGeneration?: number;
@@ -25,8 +25,10 @@ function createPrismaClient(): PrismaClient {
 
 function isPrismaClientCurrent(client: PrismaClient | undefined): client is PrismaClient {
   if (!client) return false;
-  // A cached client from before audit tables were added will not expose auditRun.
-  return typeof client.auditRun?.create === "function";
+  return (
+    typeof client.auditRun?.create === "function" &&
+    typeof client.platformSettings?.findUnique === "function"
+  );
 }
 
 export function getPrisma(): PrismaClient {

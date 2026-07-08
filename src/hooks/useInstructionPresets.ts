@@ -7,9 +7,12 @@ import {
 } from "@/lib/instruction-presets-api";
 import {
   composeInstructions,
+  createEmptyRule,
   createPresetId,
   loadInstructionPresetsFromLocal,
   saveInstructionPresets,
+  type AgentRule,
+  type AgentRulePriority,
   type InstructionPreset,
   type InstructionPresetStore,
 } from "@/lib/instruction-presets";
@@ -35,7 +38,7 @@ function applyStoreToState(
     setActiveId: (activeId: string | null) => void;
     setPurpose: (purpose: string) => void;
     setBusinessFunction: (businessFunction: string) => void;
-    setRules: (rules: string[]) => void;
+    setRules: (rules: AgentRule[]) => void;
     setPresetName: (name: string) => void;
   },
 ) {
@@ -57,7 +60,7 @@ export function useInstructionPresets() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [purpose, setPurpose] = useState("");
   const [businessFunction, setBusinessFunction] = useState("");
-  const [rules, setRules] = useState<string[]>([]);
+  const [rules, setRules] = useState<AgentRule[]>([]);
   const [presetName, setPresetName] = useState("");
   const [isDirty, setIsDirty] = useState(false);
   const [ready, setReady] = useState(false);
@@ -286,13 +289,24 @@ export function useInstructionPresets() {
   }
 
   function addRule() {
-    setRules((current) => [...current, ""]);
+    setRules((current) => [...current, createEmptyRule()]);
     setIsDirty(true);
   }
 
   function updateRule(index: number, value: string) {
     setRules((current) =>
-      current.map((rule, i) => (i === index ? value : rule)),
+      current.map((rule, i) =>
+        i === index ? { ...rule, text: value } : rule,
+      ),
+    );
+    setIsDirty(true);
+  }
+
+  function updateRulePriority(index: number, priority: AgentRulePriority) {
+    setRules((current) =>
+      current.map((rule, i) =>
+        i === index ? { ...rule, priority } : rule,
+      ),
     );
     setIsDirty(true);
   }
@@ -385,8 +399,11 @@ export function useInstructionPresets() {
     }
 
     const trimmedRules = rules
-      .map((rule) => rule.trim())
-      .filter((rule) => rule.length > 0);
+      .map((rule) => ({
+        text: rule.text.trim(),
+        priority: rule.priority,
+      }))
+      .filter((rule) => rule.text.length > 0);
     const content = composeInstructions(
       purpose,
       businessFunction,
@@ -514,6 +531,7 @@ export function useInstructionPresets() {
     updateBusinessFunction,
     addRule,
     updateRule,
+    updateRulePriority,
     removeRule,
     updateInstructions,
     updatePresetName,

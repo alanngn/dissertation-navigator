@@ -7,7 +7,7 @@ import {
   type FindingFormValues,
 } from "@/components/audit/FindingForm";
 import { SEVERITY_CONFIG } from "@/components/audit/severity-config";
-import { PencilIcon, PlusIcon, TrashIcon } from "@/components/ui/icons";
+import { PencilIcon, PlusIcon, TrashIcon, ChevronRightIcon } from "@/components/ui/icons";
 import type { AgentFinding } from "@/lib/audit-types";
 
 export type DisplayFinding = AgentFinding & {
@@ -179,6 +179,7 @@ export function FindingsList({
                           severity: finding.severity,
                           title: finding.title,
                           detail: finding.detail,
+                          example: finding.example,
                         }}
                         submitLabel="Save changes"
                         onCancel={() => setEditingId(null)}
@@ -211,6 +212,11 @@ export function FindingsList({
                             {finding.detail}
                           </p>
                         )}
+                        {finding.example &&
+                          (finding.severity === "red" ||
+                            finding.severity === "yellow") && (
+                            <FindingExample example={finding.example} />
+                          )}
                       </div>
 
                       {editor && finding.id && (
@@ -251,3 +257,33 @@ export function FindingsList({
 }
 
 export { SEVERITY_CONFIG } from "@/components/audit/severity-config";
+
+function FindingExample({ example }: { example: string }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={() => setExpanded((current) => !current)}
+        className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 transition hover:text-indigo-500"
+        aria-expanded={expanded}
+      >
+        <ChevronRightIcon
+          className={`transition ${expanded ? "rotate-90" : ""}`}
+        />
+        {expanded ? "Hide example" : "View example"}
+      </button>
+      {expanded && (
+        <div className="mt-2 rounded-lg border border-indigo-100 bg-indigo-50/50 px-3 py-2.5">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-indigo-400">
+            Example of good practice
+          </p>
+          <p className="mt-1 text-sm leading-relaxed text-zinc-700 italic">
+            {example}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
