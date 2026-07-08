@@ -25,7 +25,7 @@ export const DEFAULT_PLATFORM_RULES: AgentRule[] = [
     priority: "critical",
   },
   {
-    text: "Every red or yellow recommendation must include a concrete, generalized writing excerpt that demonstrates good practice — actual dissertation-style prose the student can emulate, not abstract advice about what to study. Use a placeholder topic rather than the student's subject matter; never generate content for their manuscript.",
+    text: "Every red or yellow recommendation must include a quotable writing excerpt in the example field: 2–4 sentences of scholarly dissertation prose on a placeholder topic. Never write abstract advice (e.g. 'the student should review…'); write the actual prose pattern the student should emulate. Do not use the student's subject matter.",
     priority: "critical",
   },
   {

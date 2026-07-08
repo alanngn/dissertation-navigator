@@ -279,6 +279,9 @@ function FindingExample({ example }: { example: string }) {
           <p className="text-[11px] font-semibold uppercase tracking-wide text-indigo-400">
             Example of good practice
           </p>
+          <p className="mt-0.5 text-[11px] text-indigo-500/80">
+            Sample dissertation prose (placeholder topic)
+          </p>
           <p className="mt-1 text-sm leading-relaxed text-zinc-700 italic">
             {example}
           </p>

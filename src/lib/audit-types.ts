@@ -78,7 +78,7 @@ You MUST respond with ONLY valid JSON (no markdown fences, no extra text) matchi
       "severity": "red" | "yellow" | "green",
       "title": "Short label (a few words)",
       "detail": "Brief explanation with key evidence (max 2 sentences)",
-      "example": "Optional. Required for red and yellow findings — see below."
+      "example": "Required for red/yellow only: a quotable dissertation writing excerpt (see EXCERPT RULES below). Omit for green."
     }
   ]
 }
@@ -93,15 +93,35 @@ Severity definitions:
 - "yellow": Moderate recommendations for improvement
 - "green": Strengths, well-done elements, or positive observations
 
-Recommendations (red and yellow) must include an "example" field:
-- Write a concrete, generalized writing excerpt — actual dissertation-style prose the student could emulate — not abstract advice about what to study or do next.
-- Do NOT write or rewrite the student's dissertation content. Use a placeholder topic (e.g. "a study of teacher retention") rather than their specific subject matter.
-- The excerpt should demonstrate structure, tone, and specificity for the type of issue flagged (max 4 sentences).
-- Omit "example" (or set to null) for green findings.
+EXCERPT RULES (red and yellow findings only):
+The "example" field must be a writing excerpt — prose the student could paste into their dissertation (on a placeholder topic) — NOT commentary about what the student should do.
 
-Example format (bad vs good):
-- Bad (too abstract): "For a study of teacher retention, the student should strengthen alignment between the conceptual framework and research questions and review case study design guidance."
-- Good (concrete excerpt): "The conceptual framework for this study of teacher retention draws on retention theory (Author, Year), which links organizational support and professional growth to educators' decisions to remain in the field. This framework directly informs the central research question: What factors influence early-career teachers' decisions to stay in their district? Each sub-question maps to a construct within the framework and will be operationalized through document analysis of district retention reports."`;
+Required:
+- Write 2–4 complete sentences in scholarly dissertation voice (third person or "the purpose of this study").
+- Use a placeholder topic unrelated to the student's manuscript (e.g. teacher retention, rural healthcare access).
+- Show structure and specificity: name constructs, cite a placeholder source (Author, Year), state relationships, or draft the actual sentence pattern being recommended.
+- The excerpt must stand alone as sample text; a reader should not need the finding's "detail" field to understand it.
+
+Forbidden in the excerpt (these make it abstract — never use):
+- Meta-advice: "the student should", "needs to", "could note", "review guidance", "practice drafting", "study next", "a strong summary should"
+- Describing what good writing looks like instead of writing it
+- Bullet lists or study to-do items
+
+Bad (abstract advice — never output this):
+"For a study of teacher retention, the student should strengthen alignment between the conceptual framework and research questions and review case study design guidance."
+
+Good (concrete excerpts — output prose like these):
+
+Framework alignment:
+"The conceptual framework for this qualitative case study of teacher retention draws on retention theory (Author, Year), which links organizational support and professional growth to educators' decisions to remain in the field. This framework directly informs the central research question: What factors influence early-career teachers' decisions to stay in their district? Each sub-question maps to a construct within the framework and will be examined through document analysis of district retention reports."
+
+Problem statement:
+"Across urban districts in the Midwest, early-career teacher turnover has exceeded 18% annually since 2019 (Author, Year), disrupting instructional continuity and increasing recruitment costs. Despite extensive retention research, few studies have examined how district-level induction policies shape first-year teachers' commitment to remain. This gap limits administrators' ability to design evidence-based retention strategies for teachers in their first three years of service."
+
+Research question:
+"RQ1: What experiences do first-year teachers in Title I elementary schools describe as influencing their decision to remain in the district? This question aligns with the phenomenological design and focuses on lived experience rather than predetermined outcomes."
+
+Omit "example" (or set to null) for green findings.`;
 
 function normalizeSeverity(value: unknown): FindingSeverity | null {
   if (typeof value !== "string") return null;
