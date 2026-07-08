@@ -7,6 +7,7 @@ import {
 } from "@/components/audit/FindingsList";
 import { SEVERITY_CONFIG } from "@/components/audit/severity-config";
 import type { FindingFormValues } from "@/components/audit/FindingForm";
+import { useToast } from "@/components/providers/ToastProvider";
 import { ChevronRightIcon } from "@/components/ui/icons";
 import { agentColorClass, agentInitial } from "@/lib/agent-display";
 import {
@@ -42,6 +43,7 @@ export function AuditReportPanel({
   report: initialReport,
   editable = false,
 }: AuditReportPanelProps) {
+  const toast = useToast();
   const [report, setReport] = useState(initialReport);
   const [view, setView] = useState<ReportView>("overview");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -97,6 +99,7 @@ export function AuditReportPanel({
             }),
           }),
         );
+        toast.success("Finding added.");
       },
       onUpdate: async (findingId, values: FindingFormValues) => {
         await mutateReport(
@@ -106,6 +109,7 @@ export function AuditReportPanel({
             body: JSON.stringify(values),
           }),
         );
+        toast.success("Finding saved.");
       },
       onDelete: async (findingId) => {
         await mutateReport(
@@ -113,6 +117,7 @@ export function AuditReportPanel({
             method: "DELETE",
           }),
         );
+        toast.success("Finding deleted.");
       },
     };
   }

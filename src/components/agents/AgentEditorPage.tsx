@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePresets } from "@/components/providers/PresetsProvider";
+import { useToast } from "@/components/providers/ToastProvider";
 import { FileUpload } from "@/components/ui/FileUpload";
 import { ArrowLeftIcon, PlusIcon, TrashIcon } from "@/components/ui/icons";
 import { FindingsList } from "@/components/audit/FindingsList";
@@ -20,6 +21,7 @@ type AgentEditorPageProps = {
 
 export function AgentEditorPage({ agentId }: AgentEditorPageProps) {
   const router = useRouter();
+  const toast = useToast();
   const isNew = agentId === "new";
 
   const {
@@ -42,6 +44,7 @@ export function AgentEditorPage({ agentId }: AgentEditorPageProps) {
     startNewDraft,
     savePreset,
     deletePresetById,
+    saving,
   } = usePresets();
 
   const [model, setModel] = useState(DEFAULT_MODEL);
@@ -110,14 +113,14 @@ export function AgentEditorPage({ agentId }: AgentEditorPageProps) {
     setFile(selected);
   }
 
-  function handleSave() {
+  async function handleSave() {
     setMessage(null);
-    const result = savePreset();
+    const result = await savePreset();
     if ("error" in result && result.error) {
-      setMessage(result.error);
+      toast.error(result.error);
       return;
     }
-    setMessage("Changes saved.");
+    toast.success(isNew ? "Agent created." : "Changes saved.");
     if (isNew && "id" in result && result.id) {
       router.replace(`/agents/${result.id}`);
     }
@@ -187,11 +190,11 @@ export function AgentEditorPage({ agentId }: AgentEditorPageProps) {
           {!readOnly && (
             <button
               type="button"
-              onClick={handleSave}
-              disabled={!instructions.trim() || !presetName.trim()}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-zinc-300"
+              onClick={() => void handleSave()}
+              disabled={saving || !instructions.trim() || !presetName.trim()}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-zinc-300"
             >
-              Save Changes
+              {saving ? "Saving…" : "Save Changes"}
             </button>
           )}
         </div>

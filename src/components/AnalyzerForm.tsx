@@ -46,6 +46,7 @@ export function AnalyzerForm() {
     startNewDraft,
     savePreset,
     deleteActivePreset,
+    saving,
   } = useInstructionPresets();
 
   const [model, setModel] = useState(DEFAULT_MODEL);
@@ -122,9 +123,9 @@ export function AnalyzerForm() {
     }
   }
 
-  function handleSavePreset() {
+  async function handleSavePreset() {
     setPresetMessage(null);
-    const result = savePreset();
+    const result = await savePreset();
 
     if ("error" in result && result.error) {
       setPresetMessage(result.error);
@@ -368,16 +369,17 @@ export function AnalyzerForm() {
               </button>
               <button
                 type="button"
-                onClick={handleSavePreset}
+                onClick={() => void handleSavePreset()}
                 disabled={
                   analyzing ||
+                  saving ||
                   switchingUser ||
                   !canEditPresets ||
                   !instructions.trim()
                 }
                 className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-50"
               >
-                {isDraft ? "Save as new" : "Save"}
+                {saving ? "Saving…" : isDraft ? "Save as new" : "Save"}
               </button>
               <button
                 type="button"

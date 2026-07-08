@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   fetchPresetsFromApi,
   savePresetsToApi,
@@ -64,6 +64,8 @@ export function useInstructionPresets() {
   const [usingDatabase, setUsingDatabase] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [switchingUser, setSwitchingUser] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const savingCountRef = useRef(0);
 
   const loadPresetsForUser = useCallback(async (userId: string) => {
     const setters = {
@@ -212,25 +214,35 @@ export function useInstructionPresets() {
       setPresets(nextPresets);
       setActiveId(nextActiveId);
 
-      try {
-        const savedToDatabase = await savePresetsToApi(saveUserId, store);
-        if (savedToDatabase) {
-          setUsingDatabase(true);
-          setSyncError(null);
-          saveInstructionPresets(store, saveUserId);
-          return;
-        }
-      } catch (error) {
-        console.warn("Database save failed, using local storage:", error);
-        setSyncError(
-          error instanceof Error
-            ? error.message
-            : "Could not save presets to database.",
-        );
-      }
+      savingCountRef.current += 1;
+      setSaving(true);
 
-      setUsingDatabase(false);
-      saveInstructionPresets(store, saveUserId);
+      try {
+        try {
+          const savedToDatabase = await savePresetsToApi(saveUserId, store);
+          if (savedToDatabase) {
+            setUsingDatabase(true);
+            setSyncError(null);
+            saveInstructionPresets(store, saveUserId);
+            return;
+          }
+        } catch (error) {
+          console.warn("Database save failed, using local storage:", error);
+          setSyncError(
+            error instanceof Error
+              ? error.message
+              : "Could not save presets to database.",
+          );
+        }
+
+        setUsingDatabase(false);
+        saveInstructionPresets(store, saveUserId);
+      } finally {
+        savingCountRef.current -= 1;
+        if (savingCountRef.current === 0) {
+          setSaving(false);
+        }
+      }
     },
     [],
   );
@@ -365,7 +377,7 @@ export function useInstructionPresets() {
     return { ok: true as const };
   }
 
-  function savePreset() {
+  async function savePreset() {
     if (!canEditPresets || !sessionUserId) {
       return {
         error: "Switch to your session to save presets.",
@@ -405,7 +417,7 @@ export function useInstructionPresets() {
             }
           : preset,
       );
-      void persist(sessionUserId, nextPresets, activeId);
+      await persist(sessionUserId, nextPresets, activeId);
       setIsDirty(false);
       return { ok: true as const, id: activeId };
     }
@@ -426,7 +438,7 @@ export function useInstructionPresets() {
     };
 
     const nextPresets = [...presets, preset];
-    void persist(sessionUserId, nextPresets, preset.id);
+    await persist(sessionUserId, nextPresets, preset.id);
     setIsDirty(false);
     return { ok: true as const, id: preset.id };
   }
@@ -481,6 +493,7 @@ export function useInstructionPresets() {
     usingDatabase,
     syncError,
     switchingUser,
+    saving,
     sessionUserId,
     selectedUserId,
     isViewingSessionUser,
