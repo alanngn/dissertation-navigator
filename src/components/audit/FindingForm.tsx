@@ -211,14 +211,14 @@ export function FindingForm({
           <span className="mb-1 block text-xs font-medium text-zinc-600">
             Example
             <span className="ml-1 font-normal text-zinc-400">
-              (generic illustration of good practice)
+              (concrete writing excerpt, generalized)
             </span>
           </span>
           <textarea
             value={example}
             onChange={(event) => setExample(event.target.value)}
             rows={3}
-            placeholder="A generic sample demonstrating what strong writing looks like for this recommendation"
+            placeholder="A concrete, generalized writing excerpt the student can emulate — not abstract advice about what to study"
             className="w-full resize-y rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
           />
         </label>

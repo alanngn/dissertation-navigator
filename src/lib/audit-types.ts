@@ -5,7 +5,7 @@ export type AgentFinding = {
   severity: FindingSeverity;
   title: string;
   detail: string;
-  /** Generic illustration of good practice — only for recommendations (red/yellow). */
+  /** Concrete, generalized writing excerpt illustrating good practice — only for recommendations (red/yellow). */
   example?: string;
 };
 
@@ -94,10 +94,14 @@ Severity definitions:
 - "green": Strengths, well-done elements, or positive observations
 
 Recommendations (red and yellow) must include an "example" field:
-- Provide a generic, illustrative sample that demonstrates good practice for the recommendation.
-- Do NOT write or rewrite the student's dissertation content. Use placeholder topics (e.g. "a study of teacher retention") rather than their specific subject matter.
-- The example should teach the student what strong writing looks like for this type of issue (max 4 sentences).
-- Omit "example" (or set to null) for green findings.`;
+- Write a concrete, generalized writing excerpt — actual dissertation-style prose the student could emulate — not abstract advice about what to study or do next.
+- Do NOT write or rewrite the student's dissertation content. Use a placeholder topic (e.g. "a study of teacher retention") rather than their specific subject matter.
+- The excerpt should demonstrate structure, tone, and specificity for the type of issue flagged (max 4 sentences).
+- Omit "example" (or set to null) for green findings.
+
+Example format (bad vs good):
+- Bad (too abstract): "For a study of teacher retention, the student should strengthen alignment between the conceptual framework and research questions and review case study design guidance."
+- Good (concrete excerpt): "The conceptual framework for this study of teacher retention draws on retention theory (Author, Year), which links organizational support and professional growth to educators' decisions to remain in the field. This framework directly informs the central research question: What factors influence early-career teachers' decisions to stay in their district? Each sub-question maps to a construct within the framework and will be operationalized through document analysis of district retention reports."`;
 
 function normalizeSeverity(value: unknown): FindingSeverity | null {
   if (typeof value !== "string") return null;

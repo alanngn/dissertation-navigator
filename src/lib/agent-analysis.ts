@@ -46,7 +46,7 @@ export async function analyzeDocumentWithAgent(
         {
           role: "system",
           content:
-            "You are a validation agent. Follow the user's instructions precisely when analyzing the provided document. Be concise: every summary and finding detail must be at most 2 sentences. Lead with the conclusion and cite only the strongest evidence. For red and yellow recommendations, always include a generic example field that illustrates good practice without writing the student's dissertation content.\n\n" +
+            "You are a validation agent. Follow the user's instructions precisely when analyzing the provided document. Be concise: every summary and finding detail must be at most 2 sentences. Lead with the conclusion and cite only the strongest evidence. For red and yellow recommendations, always include an example field with a concrete, generalized writing excerpt (dissertation-style prose on a placeholder topic) — not abstract study advice — without writing the student's dissertation content.\n\n" +
             platformGovernance +
             STRUCTURED_OUTPUT_SYSTEM_APPENDIX,
         },

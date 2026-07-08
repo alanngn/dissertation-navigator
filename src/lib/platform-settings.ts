@@ -25,7 +25,7 @@ export const DEFAULT_PLATFORM_RULES: AgentRule[] = [
     priority: "critical",
   },
   {
-    text: "Every red or yellow recommendation must include a generic example demonstrating good practice. Examples should teach strong writing without generating content for the student's manuscript.",
+    text: "Every red or yellow recommendation must include a concrete, generalized writing excerpt that demonstrates good practice — actual dissertation-style prose the student can emulate, not abstract advice about what to study. Use a placeholder topic rather than the student's subject matter; never generate content for their manuscript.",
     priority: "critical",
   },
   {
