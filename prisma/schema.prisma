@@ -47,9 +47,24 @@ model InstructionPreset {
   @@index([userId])
 }
 
+/// A dissertation case that groups related audit runs over time.
+model Project {
+  id        String   @id
+  name      String
+  userId    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  audits AuditRun[]
+
+  @@index([userId])
+  @@index([name])
+}
+
 model AuditRun {
   id           String   @id
   slug         String   @unique
+  projectId    String
   userId       String?
   fileName     String
   agentsRun    Int
@@ -60,8 +75,10 @@ model AuditRun {
   completedAt  DateTime @default(now())
   createdAt    DateTime @default(now())
 
+  project      Project            @relation(fields: [projectId], references: [id], onDelete: Restrict)
   agentResults AuditAgentResult[]
 
+  @@index([projectId])
   @@index([userId])
   @@index([slug])
 }

@@ -6,7 +6,7 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 /** Bump when new models are added so dev hot-reload picks up schema changes. */
-const PRISMA_SCHEMA_GENERATION = 4;
+const PRISMA_SCHEMA_GENERATION = 5;
 
 const globalForPrismaMeta = globalThis as unknown as {
   prismaSchemaGeneration?: number;
@@ -27,7 +27,8 @@ function isPrismaClientCurrent(client: PrismaClient | undefined): client is Pris
   if (!client) return false;
   return (
     typeof client.auditRun?.create === "function" &&
-    typeof client.platformSettings?.findUnique === "function"
+    typeof client.platformSettings?.findUnique === "function" &&
+    typeof client.project?.create === "function"
   );
 }
 

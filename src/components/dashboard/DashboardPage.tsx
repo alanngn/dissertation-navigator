@@ -4,6 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AuditRunModal } from "@/components/audit/AuditRunModal";
+import { CreateProjectModal } from "@/components/project/CreateProjectModal";
+import {
+  ProjectSelect,
+  type ProjectOption,
+} from "@/components/project/ProjectSelect";
 import { usePresets } from "@/components/providers/PresetsProvider";
 import { FileUpload } from "@/components/ui/FileUpload";
 import { BoltIcon, ChevronRightIcon, PlusIcon } from "@/components/ui/icons";
@@ -29,6 +34,10 @@ export function DashboardPage() {
     usePresets();
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [selectedProject, setSelectedProject] = useState<ProjectOption | null>(
+    null,
+  );
+  const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalStatus, setModalStatus] = useState<ModalStatus>("running");
   const [modalError, setModalError] = useState<string | null>(null);
@@ -72,6 +81,11 @@ export function DashboardPage() {
   }
 
   async function handleRunAudit() {
+    if (!selectedProject) {
+      setModalError("Select or create a project before running an audit.");
+      return;
+    }
+
     if (!file) {
       setModalError("Upload a dissertation before running an audit.");
       return;
@@ -91,6 +105,7 @@ export function DashboardPage() {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("model", DEFAULT_MODEL);
+      formData.append("projectId", selectedProject.id);
       formData.append(
         "agents",
         JSON.stringify(
@@ -110,9 +125,9 @@ export function DashboardPage() {
         body: formData,
       });
 
-      const data = await parseApiResponse<AuditRunApiResponse & { error?: string }>(
-        response,
-      );
+      const data = await parseApiResponse<
+        AuditRunApiResponse & { error?: string }
+      >(response);
 
       if (!response.ok) {
         throw new Error(data.error ?? `Audit failed (HTTP ${response.status}).`);
@@ -129,7 +144,11 @@ export function DashboardPage() {
   }
 
   const auditing = modalOpen && modalStatus === "running";
-  const canRun = Boolean(file) && presets.length > 0 && !auditing;
+  const canRun =
+    Boolean(file) &&
+    Boolean(selectedProject) &&
+    presets.length > 0 &&
+    !auditing;
 
   return (
     <>
@@ -214,6 +233,16 @@ export function DashboardPage() {
             </div>
 
             <div className="flex flex-1 flex-col p-5">
+              <div className="mb-5">
+                <ProjectSelect
+                  value={selectedProject}
+                  onChange={setSelectedProject}
+                  onCreateNew={() => setCreateProjectOpen(true)}
+                  disabled={auditing}
+                  required
+                />
+              </div>
+
               <FileUpload
                 file={file}
                 onFileChange={handleFileChange}
@@ -260,6 +289,13 @@ export function DashboardPage() {
           </section>
         </div>
       </div>
+
+      <CreateProjectModal
+        open={createProjectOpen}
+        userId={sessionUserId}
+        onClose={() => setCreateProjectOpen(false)}
+        onCreated={(project) => setSelectedProject(project)}
+      />
 
       <AuditRunModal
         open={modalOpen}

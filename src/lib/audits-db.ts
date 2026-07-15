@@ -10,6 +10,7 @@ import {
 } from "@/lib/audit-types";
 
 type SaveAuditInput = {
+  projectId: string;
   userId?: string | null;
   fileName: string;
   agentResults: AgentAuditResult[];
@@ -17,38 +18,42 @@ type SaveAuditInput = {
 
 type FindingInput = Pick<AgentFinding, "severity" | "title" | "detail" | "example">;
 
-function toAuditReport(
-  run: {
+type AuditRunWithRelations = {
+  id: string;
+  slug: string;
+  projectId: string;
+  fileName: string;
+  completedAt: Date;
+  agentsRun: number;
+  agentsFailed: number;
+  redTotal: number;
+  yellowTotal: number;
+  greenTotal: number;
+  project: { id: string; name: string };
+  agentResults: Array<{
     id: string;
-    slug: string;
-    fileName: string;
-    completedAt: Date;
-    agentsRun: number;
-    agentsFailed: number;
-    redTotal: number;
-    yellowTotal: number;
-    greenTotal: number;
-    agentResults: Array<{
+    agentId: string;
+    agentName: string;
+    status: string;
+    summary: string;
+    rawOutput: string;
+    error: string | null;
+    findings: Array<{
       id: string;
-      agentId: string;
-      agentName: string;
-      status: string;
-      summary: string;
-      rawOutput: string;
-      error: string | null;
-      findings: Array<{
-        id: string;
-        severity: string;
-        title: string;
-        detail: string;
-        example: string | null;
-      }>;
+      severity: string;
+      title: string;
+      detail: string;
+      example: string | null;
     }>;
-  },
-): AuditReport {
+  }>;
+};
+
+function toAuditReport(run: AuditRunWithRelations): AuditReport {
   return {
     id: run.id,
     slug: run.slug,
+    projectId: run.projectId,
+    projectName: run.project.name,
     fileName: run.fileName,
     completedAt: run.completedAt.getTime(),
     agentsRun: run.agentsRun,
@@ -77,13 +82,58 @@ function toAuditReport(
   };
 }
 
+function toAuditSummary(run: {
+  id: string;
+  slug: string;
+  projectId: string;
+  fileName: string;
+  completedAt: Date;
+  agentsRun: number;
+  agentsFailed: number;
+  redTotal: number;
+  yellowTotal: number;
+  greenTotal: number;
+  project: { name: string };
+}): AuditSummary {
+  return {
+    id: run.id,
+    slug: run.slug,
+    projectId: run.projectId,
+    projectName: run.project.name,
+    fileName: run.fileName,
+    completedAt: run.completedAt.getTime(),
+    agentsRun: run.agentsRun,
+    agentsFailed: run.agentsFailed,
+    totals: {
+      red: run.redTotal,
+      yellow: run.yellowTotal,
+      green: run.greenTotal,
+    },
+  };
+}
+
 const auditInclude = {
+  project: { select: { id: true, name: true } },
   agentResults: {
     include: {
       findings: true,
     },
   },
-};
+} as const;
+
+const summarySelect = {
+  id: true,
+  slug: true,
+  projectId: true,
+  fileName: true,
+  completedAt: true,
+  agentsRun: true,
+  agentsFailed: true,
+  redTotal: true,
+  yellowTotal: true,
+  greenTotal: true,
+  project: { select: { name: true } },
+} as const;
 
 export async function saveAuditRun(input: SaveAuditInput): Promise<AuditReport> {
   const prisma = getPrisma();
@@ -94,10 +144,19 @@ export async function saveAuditRun(input: SaveAuditInput): Promise<AuditReport> 
   const auditId = crypto.randomUUID();
   const slug = createAuditSlug();
 
+  const project = await prisma.project.findUnique({
+    where: { id: input.projectId },
+    select: { id: true },
+  });
+  if (!project) {
+    throw new Error("Project not found.");
+  }
+
   await prisma.auditRun.create({
     data: {
       id: auditId,
       slug,
+      projectId: input.projectId,
       userId: input.userId ?? null,
       fileName: input.fileName,
       agentsRun: input.agentResults.length,
@@ -132,6 +191,11 @@ export async function saveAuditRun(input: SaveAuditInput): Promise<AuditReport> 
     },
   });
 
+  await prisma.project.update({
+    where: { id: input.projectId },
+    data: { updatedAt: new Date() },
+  });
+
   const saved = await prisma.auditRun.findUniqueOrThrow({
     where: { id: auditId },
     include: auditInclude,
@@ -163,41 +227,26 @@ export async function getAuditById(id: string): Promise<AuditReport | null> {
 }
 
 export async function listAuditSummaries(
-  options: { userId?: string | null; limit?: number } = {},
+  options: {
+    userId?: string | null;
+    projectId?: string | null;
+    limit?: number;
+  } = {},
 ): Promise<AuditSummary[]> {
   const prisma = getPrisma();
   const limit = options.limit ?? 100;
 
   const runs = await prisma.auditRun.findMany({
-    where: options.userId ? { userId: options.userId } : undefined,
+    where: {
+      ...(options.userId ? { userId: options.userId } : {}),
+      ...(options.projectId ? { projectId: options.projectId } : {}),
+    },
     orderBy: { completedAt: "desc" },
     take: limit,
-    select: {
-      id: true,
-      slug: true,
-      fileName: true,
-      completedAt: true,
-      agentsRun: true,
-      agentsFailed: true,
-      redTotal: true,
-      yellowTotal: true,
-      greenTotal: true,
-    },
+    select: summarySelect,
   });
 
-  return runs.map((run) => ({
-    id: run.id,
-    slug: run.slug,
-    fileName: run.fileName,
-    completedAt: run.completedAt.getTime(),
-    agentsRun: run.agentsRun,
-    agentsFailed: run.agentsFailed,
-    totals: {
-      red: run.redTotal,
-      yellow: run.yellowTotal,
-      green: run.greenTotal,
-    },
-  }));
+  return runs.map(toAuditSummary);
 }
 
 export async function deleteAuditBySlug(slug: string): Promise<boolean> {

@@ -20,7 +20,7 @@ const NAV_ITEMS: Array<{
 }> = [
   { href: "/", label: "Dashboard", icon: DashboardIcon },
   { href: "/agents", label: "Agents", icon: AgentsIcon },
-  { href: "/audits", label: "Audits", icon: AuditsIcon },
+  { href: "/audits", label: "Audit History", icon: AuditsIcon },
   { href: "/settings", label: "Settings", icon: SettingsIcon },
   { href: "#", label: "Reports", icon: ReportsIcon, disabled: true },
 ];

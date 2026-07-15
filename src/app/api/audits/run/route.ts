@@ -72,7 +72,16 @@ export async function POST(request: NextRequest) {
     const file = formData.get("file");
     const agents = parseAgents(formData.get("agents"));
     const userId = (formData.get("userId") as string | null)?.trim() || null;
+    const projectId =
+      (formData.get("projectId") as string | null)?.trim() || null;
     const model = (formData.get("model") as string | null) ?? DEFAULT_MODEL;
+
+    if (!projectId) {
+      return NextResponse.json(
+        { error: "A project is required to run an audit." },
+        { status: 400 },
+      );
+    }
 
     if (!agents) {
       return NextResponse.json(
@@ -172,6 +181,7 @@ export async function POST(request: NextRequest) {
     }
 
     const report = await saveAuditRun({
+      projectId,
       userId,
       fileName: file.name,
       agentResults,

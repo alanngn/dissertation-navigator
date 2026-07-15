@@ -27,10 +27,10 @@ export default async function AuditPage({ params }: AuditPageProps) {
       <header className="mb-8">
         <div className="mb-4 flex items-center justify-between gap-4">
           <Link
-            href="/audits"
+            href={`/audits/projects/${report.projectId}`}
             className="inline-flex items-center text-sm font-medium text-zinc-500 transition hover:text-zinc-800"
           >
-            ← All audits
+            ← {report.projectName || "Back to project"}
           </Link>
           <DeleteAuditButton
             slug={report.slug}

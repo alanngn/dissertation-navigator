@@ -34,6 +34,8 @@ export type AgentAuditResult = {
 export type AuditReport = {
   id: string;
   slug: string;
+  projectId: string;
+  projectName: string;
   fileName: string;
   completedAt: number;
   agentsRun: number;
@@ -45,11 +47,36 @@ export type AuditReport = {
 export type AuditSummary = {
   id: string;
   slug: string;
+  projectId: string;
+  projectName: string;
   fileName: string;
   completedAt: number;
   agentsRun: number;
   agentsFailed: number;
   totals: Record<FindingSeverity, number>;
+};
+
+export type Project = {
+  id: string;
+  name: string;
+  userId?: string | null;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type ProjectSummary = {
+  id: string;
+  name: string;
+  auditCount: number;
+  latestAudit: AuditSummary | null;
+};
+
+export type ProjectDetail = {
+  id: string;
+  name: string;
+  createdAt: number;
+  updatedAt: number;
+  audits: AuditSummary[];
 };
 
 export const MAX_AGENT_OUTPUT_SENTENCES = 2;
@@ -256,11 +283,14 @@ import { createAuditSlug } from "@/lib/audit-slug";
 export function createAuditReport(
   fileName: string,
   agentResults: AgentAuditResult[],
+  project?: { id: string; name: string },
 ): AuditReport {
   const agentsFailed = agentResults.filter((r) => r.status === "failed").length;
   return {
     id: crypto.randomUUID(),
     slug: createAuditSlug(),
+    projectId: project?.id ?? "",
+    projectName: project?.name ?? "",
     fileName,
     completedAt: Date.now(),
     agentsRun: agentResults.length,

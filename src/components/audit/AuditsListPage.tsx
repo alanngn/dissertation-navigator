@@ -2,41 +2,40 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { DeleteAuditButton } from "@/components/audit/DeleteAuditButton";
 import { ChevronRightIcon } from "@/components/ui/icons";
-import type { AuditSummary } from "@/lib/audit-types";
+import type { ProjectSummary } from "@/lib/audit-types";
 import { totalFindingCount } from "@/lib/audit-types";
 import { formatDateTime } from "@/lib/format";
 import { parseApiResponse } from "@/lib/parse-api-response";
 
-type AuditsApiResponse = {
-  audits: AuditSummary[];
+type ProjectsApiResponse = {
+  projects: ProjectSummary[];
   error?: string;
 };
 
 export function AuditsListPage() {
-  const [audits, setAudits] = useState<AuditSummary[]>([]);
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadAudits = useCallback(async () => {
+  const loadProjects = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch("/api/audits");
-      const data = await parseApiResponse<AuditsApiResponse>(response);
+      const response = await fetch("/api/projects");
+      const data = await parseApiResponse<ProjectsApiResponse>(response);
 
       if (!response.ok) {
-        throw new Error(data.error ?? "Failed to load audits.");
+        throw new Error(data.error ?? "Failed to load projects.");
       }
 
-      setAudits(data.audits);
+      setProjects(data.projects);
     } catch (loadError) {
       setError(
         loadError instanceof Error
           ? loadError.message
-          : "Failed to load audits.",
+          : "Failed to load projects.",
       );
     } finally {
       setLoading(false);
@@ -44,28 +43,24 @@ export function AuditsListPage() {
   }, []);
 
   useEffect(() => {
-    void loadAudits();
-  }, [loadAudits]);
-
-  function handleDeleted(slug: string) {
-    setAudits((current) => current.filter((audit) => audit.slug !== slug));
-  }
+    void loadProjects();
+  }, [loadProjects]);
 
   return (
     <div className="mx-auto max-w-5xl px-8 py-8">
       <header className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-          Audits
+          Audit History
         </h1>
         <p className="mt-1 text-sm text-zinc-500">
-          Browse previous dissertation audits and reopen any report.
+          Browse projects by most recent audit activity.
         </p>
       </header>
 
       <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
         {loading && (
           <p className="px-6 py-16 text-center text-sm text-zinc-400">
-            Loading audits…
+            Loading projects…
           </p>
         )}
 
@@ -75,11 +70,11 @@ export function AuditsListPage() {
           </p>
         )}
 
-        {!loading && !error && audits.length === 0 && (
+        {!loading && !error && projects.length === 0 && (
           <div className="px-6 py-16 text-center">
-            <p className="text-sm font-medium text-zinc-700">No audits yet</p>
+            <p className="text-sm font-medium text-zinc-700">No projects yet</p>
             <p className="mt-1 text-sm text-zinc-500">
-              Run your first audit from the dashboard to see it here.
+              Create a project when you run your first audit from the dashboard.
             </p>
             <Link
               href="/"
@@ -90,14 +85,10 @@ export function AuditsListPage() {
           </div>
         )}
 
-        {!loading && !error && audits.length > 0 && (
+        {!loading && !error && projects.length > 0 && (
           <ul className="divide-y divide-zinc-100">
-            {audits.map((audit) => (
-              <AuditRow
-                key={audit.id}
-                audit={audit}
-                onDeleted={() => handleDeleted(audit.slug)}
-              />
+            {projects.map((project) => (
+              <ProjectRow key={project.id} project={project} />
             ))}
           </ul>
         )}
@@ -106,70 +97,70 @@ export function AuditsListPage() {
   );
 }
 
-function AuditRow({
-  audit,
-  onDeleted,
-}: {
-  audit: AuditSummary;
-  onDeleted: () => void;
-}) {
-  const findingTotal = totalFindingCount(audit);
-  const hasCritical = audit.totals.red > 0;
+function ProjectRow({ project }: { project: ProjectSummary }) {
+  const latest = project.latestAudit;
+  const findingTotal = latest ? totalFindingCount(latest) : 0;
+  const hasCritical = (latest?.totals.red ?? 0) > 0;
 
   return (
-    <li className="group flex items-center gap-2 pr-2">
+    <li>
       <Link
-        href={`/audits/${audit.slug}`}
-        className="flex min-w-0 flex-1 items-center gap-4 px-6 py-4 transition hover:bg-zinc-50"
+        href={`/audits/projects/${project.id}`}
+        className="group flex items-center gap-4 px-6 py-4 transition hover:bg-zinc-50"
       >
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-sm font-semibold text-indigo-600">
-          {audit.fileName.slice(0, 2).toUpperCase()}
+          {project.name.slice(0, 2).toUpperCase()}
         </div>
 
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-zinc-900">
-            {audit.fileName}
+            {project.name}
           </p>
           <p className="mt-0.5 text-xs text-zinc-500">
-            {formatDateTime(audit.completedAt)} · {audit.agentsRun} agent
-            {audit.agentsRun !== 1 ? "s" : ""} · {findingTotal} finding
-            {findingTotal !== 1 ? "s" : ""}
+            {project.auditCount} audit{project.auditCount !== 1 ? "s" : ""}
+            {latest
+              ? ` · Latest: ${latest.fileName} · ${formatDateTime(latest.completedAt)}`
+              : " · No audits yet"}
           </p>
         </div>
 
-        <div className="hidden shrink-0 items-center gap-2 sm:flex">
-          {audit.totals.red > 0 && (
-            <SeverityDot severity="red" count={audit.totals.red} />
-          )}
-          {audit.totals.yellow > 0 && (
-            <SeverityDot severity="yellow" count={audit.totals.yellow} />
-          )}
-          {audit.totals.green > 0 && (
-            <SeverityDot severity="green" count={audit.totals.green} />
-          )}
-        </div>
+        {latest && (
+          <>
+            <div className="hidden shrink-0 items-center gap-2 sm:flex">
+              {latest.totals.red > 0 && (
+                <SeverityDot severity="red" count={latest.totals.red} />
+              )}
+              {latest.totals.yellow > 0 && (
+                <SeverityDot severity="yellow" count={latest.totals.yellow} />
+              )}
+              {latest.totals.green > 0 && (
+                <SeverityDot severity="green" count={latest.totals.green} />
+              )}
+            </div>
 
-        <div className="shrink-0 text-right">
-          <p
-            className={`text-xs font-medium ${
-              hasCritical ? "text-red-600" : "text-zinc-500"
-            }`}
-          >
-            {hasCritical
-              ? `${audit.totals.red} critical`
-              : audit.totals.yellow > 0
-                ? "Review recommended"
-                : "Looks good"}
-          </p>
-          <ChevronRightIcon className="ml-auto mt-1 text-zinc-300 transition group-hover:text-zinc-500" />
-        </div>
+            <div className="shrink-0 text-right">
+              <p
+                className={`text-xs font-medium ${
+                  hasCritical ? "text-red-600" : "text-zinc-500"
+                }`}
+              >
+                {hasCritical
+                  ? `${latest.totals.red} critical`
+                  : latest.totals.yellow > 0
+                    ? "Review recommended"
+                    : findingTotal > 0
+                      ? "Looks good"
+                      : "No findings"}
+              </p>
+              <ChevronRightIcon className="ml-auto mt-1 text-zinc-300 transition group-hover:text-zinc-500" />
+            </div>
+          </>
+        )}
+
+        {!latest && (
+          <ChevronRightIcon className="shrink-0 text-zinc-300 transition group-hover:text-zinc-500" />
+        )}
       </Link>
-
-      <DeleteAuditButton
-        slug={audit.slug}
-        fileName={audit.fileName}
-        onDeleted={onDeleted}
-      />
     </li>
   );
 }
