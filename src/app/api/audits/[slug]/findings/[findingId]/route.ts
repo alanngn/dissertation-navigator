@@ -42,6 +42,10 @@ export async function PATCH(request: Request, context: RouteContext) {
     severity: payload.severity,
     title: payload.title,
     detail: payload.detail,
+    issue: payload.issue,
+    whyItMatters: payload.whyItMatters,
+    howToFix: payload.howToFix,
+    navigatorTip: payload.navigatorTip,
     example: payload.example,
   });
 

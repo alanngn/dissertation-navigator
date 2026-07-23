@@ -57,6 +57,7 @@ export const SEED_AGENTS: SeedAgent[] = [
       "The title must align with the research questions.",
       "The title must align with the methodology and research design.",
       "The title must contain terminology commonly used within the academic discipline.",
+      "For title-related findings, the example field must use the illustrative pattern format with a short sample title, e.g. A good title would look like \"Early-Career Teacher Retention in Urban Districts: A Qualitative Case Study.\"",
     ],
   },
   {

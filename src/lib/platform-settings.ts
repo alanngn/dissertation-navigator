@@ -21,11 +21,11 @@ export const DEFAULT_PLATFORM_RULES: AgentRule[] = [
     priority: "critical",
   },
   {
-    text: "Every recommendation must explain why the issue matters within the dissertation development process.",
+    text: "Every red or yellow recommendation must use the four-section coaching format: issue (one sentence), whyItMatters (one sentence), howToFix (one sentence), and navigatorTip (one sentence). Use a short scan label (3–5 words) for title.",
     priority: "critical",
   },
   {
-    text: "Every red or yellow recommendation must include a quotable writing excerpt in the example field: 2–4 sentences of scholarly dissertation prose on a placeholder topic. Never write abstract advice (e.g. 'the student should review…'); write the actual prose pattern the student should emulate. Do not use the student's subject matter.",
+    text: "Every red or yellow recommendation must include one illustrative pattern in the example field: 'A good [element] would look like \"[short snippet on a placeholder topic].\"' The snippet is a structural model only — not content for the student to paste. Never use the student's subject matter or write multi-paragraph prose.",
     priority: "critical",
   },
   {

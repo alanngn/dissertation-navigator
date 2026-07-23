@@ -105,6 +105,10 @@ model AuditFinding {
   severity      String
   title         String
   detail        String  @db.Text
+  issue         String? @db.Text
+  whyItMatters  String? @db.Text
+  howToFix      String? @db.Text
+  navigatorTip  String? @db.Text
   example       String? @db.Text
 
   agentResult AuditAgentResult @relation(fields: [agentResultId], references: [id], onDelete: Cascade)

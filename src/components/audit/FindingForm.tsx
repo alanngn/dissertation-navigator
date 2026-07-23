@@ -6,7 +6,14 @@ import type { AgentFinding, FindingSeverity } from "@/lib/audit-types";
 
 export type FindingFormValues = Pick<
   AgentFinding,
-  "severity" | "title" | "detail" | "example"
+  | "severity"
+  | "title"
+  | "detail"
+  | "issue"
+  | "whyItMatters"
+  | "howToFix"
+  | "navigatorTip"
+  | "example"
 >;
 
 export const NEW_SECTION_VALUE = "__new_section__";
@@ -26,6 +33,25 @@ type FindingFormProps = {
 
 const SEVERITIES: FindingSeverity[] = ["red", "yellow", "green"];
 
+const COACHING_FIELDS = [
+  { key: "issue", label: "Issue", placeholder: "One sentence stating the issue." },
+  {
+    key: "whyItMatters",
+    label: "Why It Matters",
+    placeholder: "One sentence explaining why it matters.",
+  },
+  {
+    key: "howToFix",
+    label: "How to Fix It",
+    placeholder: "One sentence describing how to fix it.",
+  },
+  {
+    key: "navigatorTip",
+    label: "Navigator Tip",
+    placeholder: "One sentence with a concrete actionable tip.",
+  },
+] as const;
+
 export function FindingForm({
   initial,
   sectionOptions,
@@ -43,6 +69,10 @@ export function FindingForm({
   );
   const [title, setTitle] = useState(initial?.title ?? "");
   const [detail, setDetail] = useState(initial?.detail ?? "");
+  const [issue, setIssue] = useState(initial?.issue ?? "");
+  const [whyItMatters, setWhyItMatters] = useState(initial?.whyItMatters ?? "");
+  const [howToFix, setHowToFix] = useState(initial?.howToFix ?? "");
+  const [navigatorTip, setNavigatorTip] = useState(initial?.navigatorTip ?? "");
   const [example, setExample] = useState(initial?.example ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,11 +81,30 @@ export function FindingForm({
     onSectionIdChange && (allowNewSection || (sectionOptions?.length ?? 0) > 0),
   );
   const isNewSection = selectedSectionId === NEW_SECTION_VALUE;
+  const isRecommendation = severity === "red" || severity === "yellow";
+
+  const coachingValues = {
+    issue,
+    whyItMatters,
+    howToFix,
+    navigatorTip,
+  };
+
+  const coachingSetters = {
+    issue: setIssue,
+    whyItMatters: setWhyItMatters,
+    howToFix: setHowToFix,
+    navigatorTip: setNavigatorTip,
+  };
 
   useEffect(() => {
     setSeverity(initial?.severity ?? "yellow");
     setTitle(initial?.title ?? "");
     setDetail(initial?.detail ?? "");
+    setIssue(initial?.issue ?? "");
+    setWhyItMatters(initial?.whyItMatters ?? "");
+    setHowToFix(initial?.howToFix ?? "");
+    setNavigatorTip(initial?.navigatorTip ?? "");
     setExample(initial?.example ?? "");
     setError(null);
   }, [initial]);
@@ -86,15 +135,26 @@ export function FindingForm({
     setError(null);
 
     try {
-      await onSubmit({
+      const values: FindingFormValues = {
         severity,
         title: trimmedTitle,
         detail: trimmedDetail || trimmedTitle,
         example:
-          severity === "red" || severity === "yellow"
-            ? trimmedExample || undefined
-            : undefined,
-      });
+          isRecommendation && trimmedExample ? trimmedExample : undefined,
+      };
+
+      if (isRecommendation) {
+        const trimmedIssue = issue.trim();
+        const trimmedWhy = whyItMatters.trim();
+        const trimmedFix = howToFix.trim();
+        const trimmedTip = navigatorTip.trim();
+        if (trimmedIssue) values.issue = trimmedIssue;
+        if (trimmedWhy) values.whyItMatters = trimmedWhy;
+        if (trimmedFix) values.howToFix = trimmedFix;
+        if (trimmedTip) values.navigatorTip = trimmedTip;
+      }
+
+      await onSubmit(values);
     } catch (submitError) {
       setError(
         submitError instanceof Error
@@ -188,37 +248,56 @@ export function FindingForm({
           type="text"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
-          placeholder="Short label"
+          placeholder="Short scan label (3–5 words)"
           className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
         />
       </label>
 
-      <label className="block">
-        <span className="mb-1 block text-xs font-medium text-zinc-600">
-          Detail
-        </span>
-        <textarea
-          value={detail}
-          onChange={(event) => setDetail(event.target.value)}
-          rows={3}
-          placeholder="Brief explanation with key evidence"
-          className="w-full resize-y rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
-        />
-      </label>
+      {isRecommendation ? (
+        COACHING_FIELDS.map(({ key, label, placeholder }) => (
+          <label key={key} className="block">
+            <span className="mb-1 block text-xs font-medium text-zinc-600">
+              {label}
+            </span>
+            <textarea
+              value={coachingValues[key]}
+              onChange={(event) =>
+                coachingSetters[key](event.target.value)
+              }
+              rows={2}
+              placeholder={placeholder}
+              className="w-full resize-y rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+            />
+          </label>
+        ))
+      ) : (
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-zinc-600">
+            Detail
+          </span>
+          <textarea
+            value={detail}
+            onChange={(event) => setDetail(event.target.value)}
+            rows={3}
+            placeholder="Brief description of the strength"
+            className="w-full resize-y rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+          />
+        </label>
+      )}
 
-      {(severity === "red" || severity === "yellow") && (
+      {isRecommendation && (
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-zinc-600">
             Example
             <span className="ml-1 font-normal text-zinc-400">
-              (concrete writing excerpt, generalized)
+              (illustrative pattern)
             </span>
           </span>
           <textarea
             value={example}
             onChange={(event) => setExample(event.target.value)}
             rows={3}
-            placeholder="A concrete, generalized writing excerpt the student can emulate — not abstract advice about what to study"
+            placeholder='A good title would look like "Early-Career Teacher Retention in Urban Districts: A Qualitative Case Study."'
             className="w-full resize-y rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
           />
         </label>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { DeleteAuditButton } from "@/components/audit/DeleteAuditButton";
+import { SEVERITY_CONFIG } from "@/components/audit/severity-config";
 import { ArrowLeftIcon, ChevronRightIcon } from "@/components/ui/icons";
 import type { AuditSummary, ProjectDetail } from "@/lib/audit-types";
 import { totalFindingCount } from "@/lib/audit-types";
@@ -287,18 +288,13 @@ function SeverityPill({
   severity: "red" | "yellow" | "green";
   count: number;
 }) {
-  const styles = {
-    red: "bg-red-50 text-red-700 border-red-100",
-    yellow: "bg-amber-50 text-amber-700 border-amber-100",
-    green: "bg-emerald-50 text-emerald-700 border-emerald-100",
-  };
-  const labels = { red: "Critical", yellow: "Moderate", green: "Strengths" };
+  const config = SEVERITY_CONFIG[severity];
 
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium ${styles[severity]}`}
+      className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium ${config.border} ${config.bg} ${config.text}`}
     >
-      {count} {labels[severity]}
+      {count} {config.label}
     </span>
   );
 }
@@ -310,15 +306,11 @@ function SeverityDot({
   severity: "red" | "yellow" | "green";
   count: number;
 }) {
-  const dot = {
-    red: "bg-red-500",
-    yellow: "bg-amber-400",
-    green: "bg-emerald-500",
-  }[severity];
+  const config = SEVERITY_CONFIG[severity];
 
   return (
     <span className="flex items-center gap-1 text-xs text-zinc-500">
-      <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+      <span className={`h-1.5 w-1.5 rounded-full ${config.dot}`} />
       {count}
     </span>
   );

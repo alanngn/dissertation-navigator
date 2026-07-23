@@ -6,6 +6,7 @@ import type { AuditReport } from "@/lib/audit-types";
 import { totalFindingCount } from "@/lib/audit-types";
 import { buildAuditLoadingSteps } from "@/lib/audit-loading-steps";
 import { ShareAuditLink } from "@/components/audit/ShareAuditLink";
+import { SEVERITY_CONFIG } from "@/components/audit/severity-config";
 
 type AuditRunModalProps = {
   open: boolean;
@@ -246,21 +247,15 @@ function SeverityPill({
   severity: "red" | "yellow" | "green";
   count: number;
 }) {
-  const styles = {
-    red: "bg-red-50 text-red-700 border-red-100",
-    yellow: "bg-amber-50 text-amber-700 border-amber-100",
-    green: "bg-emerald-50 text-emerald-700 border-emerald-100",
-  };
-
-  const labels = { red: "Critical", yellow: "Moderate", green: "Strengths" };
+  const config = SEVERITY_CONFIG[severity];
 
   return (
     <div
-      className={`rounded-lg border px-3 py-2 text-center ${styles[severity]}`}
+      className={`rounded-lg border px-3 py-2 text-center ${config.border} ${config.bg} ${config.text}`}
     >
       <p className="text-lg font-semibold leading-none">{count}</p>
-      <p className="mt-1 text-[10px] font-medium uppercase tracking-wide opacity-70">
-        {labels[severity]}
+      <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide">
+        {config.label}
       </p>
     </div>
   );

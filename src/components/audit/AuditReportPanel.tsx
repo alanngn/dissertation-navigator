@@ -31,7 +31,7 @@ type AuditReportPanelProps = {
 
 const VIEW_TABS: { id: ReportView; label: string }[] = [
   { id: "overview", label: "Overview" },
-  { id: "recommendations", label: "All Recommendations" },
+  { id: "recommendations", label: "Areas for Improvement" },
 ];
 
 type ReportApiResponse = {
@@ -173,9 +173,15 @@ export function AuditReportPanel({
           />
         ) : (
           <div>
+            <p className="mb-2 text-sm text-zinc-600">
+              {findingTotal} findings identified across {completed.length}{" "}
+              validation areas. Review the feedback below to strengthen your
+              dissertation.
+              {editable ? " Edit, add, or remove findings below." : ""}
+            </p>
             <p className="mb-4 text-sm text-zinc-500">
-              {findingTotal} findings across {completed.length} sections
-              {editable ? ". Edit, add, or remove findings below." : ""}
+              The findings below are organized by validation agent. Review each
+              recommendation to improve dissertation quality and alignment.
             </p>
             <FindingsList
               findings={allFindings}
@@ -214,14 +220,14 @@ function OverviewView({
     <div className="space-y-5">
       <div className="rounded-xl bg-zinc-50 px-4 py-4">
         <p className="text-sm font-medium text-zinc-900">
-          {completedCount}/{report.agentsRun} sections completed ·{" "}
+          {completedCount}/{report.agentsRun} validation areas completed ·{" "}
           {findingTotal} total findings
         </p>
         <p className="mt-1 text-sm text-zinc-500">
           {hasCritical
             ? `${report.totals.red} critical issue${report.totals.red !== 1 ? "s" : ""} need attention.`
             : report.totals.yellow > 0
-              ? "No critical issues. Review moderate recommendations."
+              ? "No critical issues. Review recommended improvements."
               : "No critical or moderate issues found."}
         </p>
       </div>
@@ -253,7 +259,7 @@ function OverviewView({
         onClick={onViewRecommendations}
         className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-500"
       >
-        View all recommendations
+        View areas for improvement
       </button>
     </div>
   );
@@ -347,16 +353,10 @@ function SeverityTotal({
   count: number;
 }) {
   const config = SEVERITY_CONFIG[severity];
-  const bg =
-    severity === "red"
-      ? "bg-red-50"
-      : severity === "yellow"
-        ? "bg-amber-50"
-        : "bg-emerald-50";
 
   return (
     <div
-      className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${config.border} ${bg}`}
+      className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${config.border} ${config.bg}`}
     >
       <span className={`h-2.5 w-2.5 rounded-full ${config.dot}`} />
       <div>
@@ -364,9 +364,12 @@ function SeverityTotal({
           {count}
         </p>
         <p
-          className={`mt-0.5 text-[10px] font-medium uppercase tracking-wide ${config.text} opacity-70`}
+          className={`mt-0.5 text-[10px] font-semibold uppercase tracking-wide ${config.text}`}
         >
           {config.label}
+        </p>
+        <p className={`mt-0.5 text-[10px] leading-snug ${config.text} opacity-80`}>
+          {config.description}
         </p>
       </div>
     </div>

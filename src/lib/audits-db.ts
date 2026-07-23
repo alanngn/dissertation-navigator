@@ -5,7 +5,8 @@ import {
   type AgentFinding,
   type AuditReport,
   type AuditSummary,
-  type FindingSeverity,
+  findingFromDb,
+  findingToDbFields,
   mergeTotals,
 } from "@/lib/audit-types";
 
@@ -16,7 +17,17 @@ type SaveAuditInput = {
   agentResults: AgentAuditResult[];
 };
 
-type FindingInput = Pick<AgentFinding, "severity" | "title" | "detail" | "example">;
+type FindingInput = Pick<
+  AgentFinding,
+  | "severity"
+  | "title"
+  | "detail"
+  | "issue"
+  | "whyItMatters"
+  | "howToFix"
+  | "navigatorTip"
+  | "example"
+>;
 
 type AuditRunWithRelations = {
   id: string;
@@ -43,6 +54,10 @@ type AuditRunWithRelations = {
       severity: string;
       title: string;
       detail: string;
+      issue: string | null;
+      whyItMatters: string | null;
+      howToFix: string | null;
+      navigatorTip: string | null;
       example: string | null;
     }>;
   }>;
@@ -69,13 +84,7 @@ function toAuditReport(run: AuditRunWithRelations): AuditReport {
       agentName: result.agentName,
       status: result.status as "completed" | "failed",
       summary: result.summary,
-      findings: result.findings.map((finding) => ({
-        id: finding.id,
-        severity: finding.severity as FindingSeverity,
-        title: finding.title,
-        detail: finding.detail,
-        ...(finding.example ? { example: finding.example } : {}),
-      })),
+      findings: result.findings.map((finding) => findingFromDb(finding)),
       rawOutput: result.rawOutput,
       error: result.error ?? undefined,
     })),
@@ -178,10 +187,7 @@ export async function saveAuditRun(input: SaveAuditInput): Promise<AuditReport> 
                 findings: {
                   create: result.findings.map((finding) => ({
                     id: crypto.randomUUID(),
-                    severity: finding.severity,
-                    title: finding.title,
-                    detail: finding.detail,
-                    example: finding.example ?? null,
+                    ...findingToDbFields(finding),
                   })),
                 },
               }
@@ -343,10 +349,7 @@ export async function createAuditFinding(
           create: [
             {
               id: crypto.randomUUID(),
-              severity: input.severity,
-              title: input.title,
-              detail: input.detail,
-              example: input.example ?? null,
+              ...findingToDbFields(input),
             },
           ],
         },
@@ -377,10 +380,7 @@ export async function createAuditFinding(
     data: {
       id: crypto.randomUUID(),
       agentResultId: sectionId,
-      severity: input.severity,
-      title: input.title,
-      detail: input.detail,
-      example: input.example ?? null,
+      ...findingToDbFields(input),
     },
   });
 
@@ -409,12 +409,7 @@ export async function updateAuditFinding(
 
   await prisma.auditFinding.update({
     where: { id: findingId },
-    data: {
-      severity: input.severity,
-      title: input.title,
-      detail: input.detail,
-      example: input.example ?? null,
-    },
+    data: findingToDbFields(input),
   });
 
   await refreshAuditTotals(auditRunId);

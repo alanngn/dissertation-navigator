@@ -8,7 +8,7 @@ import {
 } from "@/components/audit/FindingForm";
 import { SEVERITY_CONFIG } from "@/components/audit/severity-config";
 import { PencilIcon, PlusIcon, TrashIcon, ChevronRightIcon } from "@/components/ui/icons";
-import type { AgentFinding } from "@/lib/audit-types";
+import { hasCoachingFormat, type AgentFinding } from "@/lib/audit-types";
 
 export type DisplayFinding = AgentFinding & {
   agentName?: string;
@@ -179,6 +179,10 @@ export function FindingsList({
                           severity: finding.severity,
                           title: finding.title,
                           detail: finding.detail,
+                          issue: finding.issue,
+                          whyItMatters: finding.whyItMatters,
+                          howToFix: finding.howToFix,
+                          navigatorTip: finding.navigatorTip,
                           example: finding.example,
                         }}
                         submitLabel="Save changes"
@@ -207,11 +211,7 @@ export function FindingsList({
                         <p className="text-sm font-medium text-zinc-900">
                           {finding.title}
                         </p>
-                        {finding.detail !== finding.title && (
-                          <p className="mt-1 text-sm leading-relaxed text-zinc-600">
-                            {finding.detail}
-                          </p>
-                        )}
+                        <FindingBody finding={finding} />
                         {finding.example &&
                           (finding.severity === "red" ||
                             finding.severity === "yellow") && (
@@ -258,6 +258,49 @@ export function FindingsList({
 
 export { SEVERITY_CONFIG } from "@/components/audit/severity-config";
 
+const COACHING_SECTIONS = [
+  { key: "issue", label: "Issue" },
+  { key: "whyItMatters", label: "Why It Matters" },
+  { key: "howToFix", label: "How to Fix It" },
+  { key: "navigatorTip", label: "Navigator Tip" },
+] as const;
+
+function FindingBody({ finding }: { finding: AgentFinding }) {
+  if (
+    (finding.severity === "red" || finding.severity === "yellow") &&
+    hasCoachingFormat(finding)
+  ) {
+    return (
+      <dl className="mt-2 space-y-2">
+        {COACHING_SECTIONS.map(({ key, label }) => {
+          const value = finding[key];
+          if (!value) return null;
+          return (
+            <div key={key}>
+              <dt className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                {label}
+              </dt>
+              <dd className="mt-0.5 text-sm leading-relaxed text-zinc-600">
+                {value}
+              </dd>
+            </div>
+          );
+        })}
+      </dl>
+    );
+  }
+
+  if (finding.detail !== finding.title) {
+    return (
+      <p className="mt-1 text-sm leading-relaxed text-zinc-600">
+        {finding.detail}
+      </p>
+    );
+  }
+
+  return null;
+}
+
 function FindingExample({ example }: { example: string }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -280,9 +323,9 @@ function FindingExample({ example }: { example: string }) {
             Example of good practice
           </p>
           <p className="mt-0.5 text-[11px] text-indigo-500/80">
-            Sample dissertation prose (placeholder topic)
+            Illustrative pattern (placeholder topic)
           </p>
-          <p className="mt-1 text-sm leading-relaxed text-zinc-700 italic">
+          <p className="mt-1 text-sm leading-relaxed text-zinc-700">
             {example}
           </p>
         </div>
