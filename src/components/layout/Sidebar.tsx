@@ -18,7 +18,7 @@ const NAV_ITEMS: Array<{
   icon: typeof DashboardIcon;
   disabled?: boolean;
 }> = [
-  { href: "/", label: "Dashboard", icon: DashboardIcon },
+  { href: "/dashboard", label: "Dashboard", icon: DashboardIcon },
   { href: "/agents", label: "Agents", icon: AgentsIcon },
   { href: "/audits", label: "Audit History", icon: AuditsIcon },
   { href: "/settings", label: "Settings", icon: SettingsIcon },
@@ -47,8 +47,8 @@ export function Sidebar() {
       <nav className="flex-1 space-y-0.5 px-3 py-4">
         {NAV_ITEMS.map((item) => {
           const isActive =
-            item.href === "/"
-              ? pathname === "/"
+            item.href === "/dashboard"
+              ? pathname === "/dashboard"
               : item.href !== "#" && pathname.startsWith(item.href);
           const Icon = item.icon;
 

@@ -77,7 +77,7 @@ export function AuditsListPage() {
               Create a project when you run your first audit from the dashboard.
             </p>
             <Link
-              href="/"
+              href="/dashboard"
               className="mt-5 inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-500"
             >
               Go to dashboard

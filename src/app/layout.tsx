@@ -13,9 +13,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dissertation Navigator",
+  title: {
+    default: "Dissertation Navigator",
+    template: "%s | Dissertation Navigator",
+  },
   description:
-    "Run validation agents on dissertations, manage agent instructions, and generate audit reports.",
+    "AI-powered dissertation review for dissertation chairs reviewing student work.",
 };
 
 export default function RootLayout({
