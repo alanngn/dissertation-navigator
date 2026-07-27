@@ -125,8 +125,8 @@ export function LandingPage() {
               <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-zinc-600">
                 Upload a student&apos;s draft and run AI validation agents against
                 it. You get a structured audit report with prioritized findings
-                and coaching notes — so you can focus on guiding your student,
-                not hunting for problems line by line.
+                and coaching notes—so you can focus on guiding your student,
+                not reviewing every page line by line.
               </p>
               <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <Link
