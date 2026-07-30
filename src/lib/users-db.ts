@@ -22,13 +22,18 @@ export async function listUsers(): Promise<UserSummary[]> {
   });
 }
 
+type EnsureUserInput = {
+  name?: string;
+  email?: string;
+};
+
 export async function ensureUser(
   id: string,
-  name?: string,
+  input?: EnsureUserInput,
 ): Promise<UserSummary> {
   const prisma = getPrisma();
-  const displayName = name?.trim() || formatSessionUserName(id);
-  const email = `session-${id}@local`;
+  const displayName = input?.name?.trim() || formatSessionUserName(id);
+  const email = input?.email?.trim() || `session-${id}@local`;
 
   return prisma.user.upsert({
     where: { id },
@@ -38,7 +43,10 @@ export async function ensureUser(
       name: displayName,
       role: "user",
     },
-    update: {},
+    update: {
+      name: displayName,
+      email,
+    },
     select: {
       id: true,
       name: true,

@@ -1,5 +1,6 @@
 "use client";
 
+import { useUser } from "@clerk/nextjs";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   fetchPresetsFromApi,
@@ -17,12 +18,10 @@ import {
   type InstructionPresetStore,
 } from "@/lib/instruction-presets";
 import {
-  createSessionUserId,
-  formatSessionUserName,
+  getClerkDisplayName,
+  getClerkEmail,
   getSelectedUserIdFromLocal,
-  getSessionUserIdFromLocal,
   setSelectedUserIdInLocal,
-  setSessionUserIdInLocal,
 } from "@/lib/session-user";
 import {
   ensureUserOnApi,
@@ -53,6 +52,7 @@ function applyStoreToState(
 }
 
 export function useInstructionPresets() {
+  const { isLoaded: isClerkLoaded, isSignedIn, user: clerkUser } = useUser();
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [users, setUsers] = useState<UserSummary[]>([]);
@@ -131,15 +131,20 @@ export function useInstructionPresets() {
   }, []);
 
   useEffect(() => {
+    if (!isClerkLoaded) return;
+
     let cancelled = false;
 
     async function init() {
-      let nextSessionUserId = getSessionUserIdFromLocal();
-
-      if (!nextSessionUserId) {
-        nextSessionUserId = createSessionUserId();
-        setSessionUserIdInLocal(nextSessionUserId);
+      if (!isSignedIn || !clerkUser) {
+        setSessionUserId(null);
+        setReady(true);
+        return;
       }
+
+      const nextSessionUserId = clerkUser.id;
+      const displayName = getClerkDisplayName(clerkUser);
+      const email = getClerkEmail(clerkUser);
 
       if (cancelled) return;
 
@@ -148,14 +153,11 @@ export function useInstructionPresets() {
       let nextUsers: UserSummary[] = [];
 
       try {
-        await ensureUserOnApi(
-          nextSessionUserId,
-          formatSessionUserName(nextSessionUserId),
-        );
+        await ensureUserOnApi(nextSessionUserId, { name: displayName, email });
         nextUsers = await fetchUsersFromApi();
         setSyncError(null);
       } catch (error) {
-        console.warn("User setup failed, continuing with local session:", error);
+        console.warn("User setup failed, continuing with Clerk session:", error);
         setSyncError(
           error instanceof Error
             ? error.message
@@ -164,8 +166,8 @@ export function useInstructionPresets() {
         nextUsers = [
           {
             id: nextSessionUserId,
-            name: formatSessionUserName(nextSessionUserId),
-            email: `session-${nextSessionUserId}@local`,
+            name: displayName,
+            email: email ?? `session-${nextSessionUserId}@local`,
             role: "user",
           },
         ];
@@ -194,12 +196,13 @@ export function useInstructionPresets() {
       }
     }
 
+    setReady(false);
     void init();
 
     return () => {
       cancelled = true;
     };
-  }, [loadPresetsForUser]);
+  }, [isClerkLoaded, isSignedIn, clerkUser, loadPresetsForUser]);
 
   const persist = useCallback(
     async (

@@ -42,7 +42,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const { id, name } = body as { id?: unknown; name?: unknown };
+  const { id, name, email } = body as {
+    id?: unknown;
+    name?: unknown;
+    email?: unknown;
+  };
 
   if (typeof id !== "string" || !id.trim()) {
     return NextResponse.json({ error: "User id is required." }, { status: 400 });
@@ -52,8 +56,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid user name." }, { status: 400 });
   }
 
+  if (email !== undefined && typeof email !== "string") {
+    return NextResponse.json({ error: "Invalid user email." }, { status: 400 });
+  }
+
   try {
-    const user = await ensureUser(id.trim(), name);
+    const user = await ensureUser(id.trim(), {
+      name: typeof name === "string" ? name : undefined,
+      email: typeof email === "string" ? email : undefined,
+    });
     return NextResponse.json(user);
   } catch (error) {
     console.error("Failed to ensure user:", error);

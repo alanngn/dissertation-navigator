@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { UserButton, useUser } from "@clerk/nextjs";
 import { usePresets } from "@/components/providers/PresetsProvider";
+import { getClerkEmail } from "@/lib/session-user";
 import {
   AgentsIcon,
   AuditsIcon,
   BookIcon,
   DashboardIcon,
-  ReportsIcon,
   SettingsIcon,
 } from "@/components/ui/icons";
 
@@ -16,21 +17,23 @@ const NAV_ITEMS: Array<{
   href: string;
   label: string;
   icon: typeof DashboardIcon;
-  disabled?: boolean;
 }> = [
   { href: "/dashboard", label: "Dashboard", icon: DashboardIcon },
   { href: "/agents", label: "Agents", icon: AgentsIcon },
   { href: "/audits", label: "Audit History", icon: AuditsIcon },
   { href: "/settings", label: "Settings", icon: SettingsIcon },
-  { href: "#", label: "Reports", icon: ReportsIcon, disabled: true },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { user: clerkUser } = useUser();
   const { users, sessionUserId, ready } = usePresets();
 
   const currentUser =
     users.find((u) => u.id === sessionUserId) ?? users[0];
+  const displayEmail =
+    currentUser?.email ??
+    (clerkUser ? getClerkEmail(clerkUser) : undefined);
 
   return (
     <aside className="flex h-full w-60 shrink-0 flex-col border-r border-zinc-200 bg-white">
@@ -49,21 +52,8 @@ export function Sidebar() {
           const isActive =
             item.href === "/dashboard"
               ? pathname === "/dashboard"
-              : item.href !== "#" && pathname.startsWith(item.href);
+              : pathname.startsWith(item.href);
           const Icon = item.icon;
-
-          if (item.disabled) {
-            return (
-              <span
-                key={item.label}
-                className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-zinc-300"
-                title="Coming soon"
-              >
-                <Icon className="h-5 w-5" />
-                {item.label}
-              </span>
-            );
-          }
 
           return (
             <Link
@@ -86,17 +76,21 @@ export function Sidebar() {
         <p className="mb-3 text-[10px] font-medium uppercase tracking-wider text-zinc-400">
           Powered by OpenAI
         </p>
-        {ready && currentUser && (
+        {ready && clerkUser && (
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700">
-              {currentUser.name.charAt(0).toUpperCase()}
-            </div>
-            <div className="min-w-0">
+            <UserButton
+              appearance={{
+                elements: {
+                  avatarBox: "h-8 w-8",
+                },
+              }}
+            />
+            <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-zinc-900">
-                {currentUser.name}
+                {displayEmail ?? "User"}
               </p>
               <p className="truncate text-xs text-zinc-500 capitalize">
-                {currentUser.role}
+                {currentUser?.role ?? "user"}
               </p>
             </div>
           </div>

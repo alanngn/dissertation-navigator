@@ -23,12 +23,12 @@ export async function fetchUsersFromApi(): Promise<UserSummary[]> {
 
 export async function ensureUserOnApi(
   id: string,
-  name?: string,
+  input?: { name?: string; email?: string },
 ): Promise<UserSummary> {
   const response = await fetch("/api/users", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, name }),
+    body: JSON.stringify({ id, ...input }),
   });
 
   const data = await parseApiResponse<EnsureUserResponse>(response);

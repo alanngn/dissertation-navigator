@@ -1,8 +1,8 @@
 import Link from "next/link";
+import { LandingAuthActions } from "@/components/landing/LandingAuthActions";
 import {
   AuditsIcon,
   BookIcon,
-  ChevronRightIcon,
   SettingsIcon,
 } from "@/components/ui/icons";
 import {
@@ -96,13 +96,7 @@ export function LandingPage() {
             </a>
           </nav>
 
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-500"
-          >
-            Open dashboard
-            <ChevronRightIcon className="h-4 w-4" />
-          </Link>
+          <LandingAuthActions variant="header" />
         </div>
       </header>
 
@@ -128,21 +122,7 @@ export function LandingPage() {
                 and coaching notes—so you can focus on guiding your student,
                 not reviewing every page line by line.
               </p>
-              <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                <Link
-                  href="/dashboard"
-                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-500"
-                >
-                  Start reviewing
-                  <ChevronRightIcon className="h-4 w-4" />
-                </Link>
-                <a
-                  href="#how-it-works"
-                  className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-6 py-3 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
-                >
-                  See how it works
-                </a>
-              </div>
+              <LandingAuthActions variant="hero" />
             </div>
 
             {/* Hero visual — example findings preview */}
@@ -316,13 +296,7 @@ export function LandingPage() {
               Upload a dissertation chapter, run your validation agents, and
               get structured findings you can share with your student in minutes.
             </p>
-            <Link
-              href="/dashboard"
-              className="mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-medium text-indigo-700 shadow-sm transition hover:bg-indigo-50"
-            >
-              Go to dashboard
-              <ChevronRightIcon className="h-4 w-4" />
-            </Link>
+            <LandingAuthActions variant="cta" />
           </div>
         </section>
       </main>
