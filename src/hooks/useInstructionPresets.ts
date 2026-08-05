@@ -28,7 +28,6 @@ import {
   fetchUsersFromApi,
 } from "@/lib/users-api";
 import type { UserSummary } from "@/lib/users-db";
-import { GLOBAL_WORKSPACE_USER_ID } from "@/lib/seed-agents";
 
 function applyStoreToState(
   store: InstructionPresetStore,
@@ -187,9 +186,7 @@ export function useInstructionPresets() {
       setSelectedUserId(nextSelectedUserId);
       setSelectedUserIdInLocal(nextSelectedUserId);
 
-      // Agents are global for now: every session reads from and writes to the
-      // shared workspace, so seeded agents and edits are visible to everyone.
-      await loadPresetsForUser(GLOBAL_WORKSPACE_USER_ID);
+      await loadPresetsForUser(nextSelectedUserId);
 
       if (!cancelled) {
         setReady(true);
@@ -206,12 +203,10 @@ export function useInstructionPresets() {
 
   const persist = useCallback(
     async (
-      _saveUserId: string,
+      saveUserId: string,
       nextPresets: InstructionPreset[],
       nextActiveId: string | null,
     ) => {
-      // Always persist to the shared workspace so edits are global.
-      const saveUserId = GLOBAL_WORKSPACE_USER_ID;
       const store: InstructionPresetStore = {
         presets: nextPresets,
         activeId: nextActiveId,
@@ -262,9 +257,7 @@ export function useInstructionPresets() {
       setSelectedUserIdInLocal(userId);
 
       try {
-        // Agents are global for now, so always load the shared workspace
-        // regardless of which user is selected for viewing.
-        await loadPresetsForUser(GLOBAL_WORKSPACE_USER_ID);
+        await loadPresetsForUser(userId);
       } finally {
         setSwitchingUser(false);
       }
@@ -276,8 +269,7 @@ export function useInstructionPresets() {
   const isDraft = activeId === null;
   const isViewingSessionUser =
     sessionUserId !== null && selectedUserId === sessionUserId;
-  // Agents live in a shared workspace, so any signed-in session can edit them.
-  const canEditPresets = sessionUserId !== null;
+  const canEditPresets = isViewingSessionUser;
 
   const instructions = composeInstructions(purpose, businessFunction, rules);
 

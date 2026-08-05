@@ -5,15 +5,9 @@ import {
 } from "@/lib/instruction-presets";
 
 /**
- * Shared workspace that owns the seeded validation agents. For now agents are
- * global: every session reads from and writes to this single workspace, so an
- * edit by anyone is visible to everyone. Per-user agents can be layered on top
- * of this later without changing the seed data.
+ * Default validation agents that ship with the product. These are seeded into
+ * the AgentTemplate table and cloned into each user's workspace on signup.
  */
-export const GLOBAL_WORKSPACE_USER_ID = "global-workspace";
-export const GLOBAL_WORKSPACE_USER_NAME = "Shared Workspace";
-export const GLOBAL_WORKSPACE_USER_EMAIL = "workspace@dissertation-navigator.local";
-
 type SeedAgent = {
   /** Stable id so re-seeding is idempotent and edits are preserved. */
   id: string;

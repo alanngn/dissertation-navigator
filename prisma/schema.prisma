@@ -19,6 +19,20 @@ model User {
   presets InstructionPreset[]
 }
 
+/// Default agent templates cloned into each user's workspace on signup.
+model AgentTemplate {
+  id               String   @id
+  name             String
+  purpose          String   @default("") @db.Text
+  businessFunction String   @default("") @db.Text
+  /// Agent rules as JSON array of { text, priority: "critical" | "moderate" }.
+  rules            Json     @default("[]")
+  content          String   @db.Text
+  sortOrder        Int      @default(0)
+  updatedAt        DateTime @updatedAt
+  createdAt        DateTime @default(now())
+}
+
 /// Singleton platform governance settings inherited by every agent at runtime.
 model PlatformSettings {
   id        String   @id @default("platform")

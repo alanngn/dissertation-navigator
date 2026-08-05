@@ -1,8 +1,17 @@
 import { NextResponse } from "next/server";
+import {
+  isAdminUser,
+  requireAuthUserId,
+} from "@/lib/admin-auth";
 import { isDatabaseConfigured } from "@/lib/db";
 import { ensureUser, listUsers } from "@/lib/users-db";
 
 export async function GET() {
+  const authUserId = await requireAuthUserId();
+  if (!authUserId) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
   if (!isDatabaseConfigured()) {
     return NextResponse.json(
       { error: "Database is not configured." },
@@ -11,8 +20,13 @@ export async function GET() {
   }
 
   try {
-    const users = await listUsers();
-    return NextResponse.json({ users });
+    if (await isAdminUser(authUserId)) {
+      const users = await listUsers();
+      return NextResponse.json({ users });
+    }
+
+    const user = await ensureUser(authUserId);
+    return NextResponse.json({ users: [user] });
   } catch (error) {
     console.error("Failed to list users:", error);
     return NextResponse.json(
@@ -23,6 +37,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const authUserId = await requireAuthUserId();
+  if (!authUserId) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
   if (!isDatabaseConfigured()) {
     return NextResponse.json(
       { error: "Database is not configured." },
@@ -52,6 +71,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "User id is required." }, { status: 400 });
   }
 
+  const requestedId = id.trim();
+  if (requestedId !== authUserId && !(await isAdminUser(authUserId))) {
+    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+
   if (name !== undefined && typeof name !== "string") {
     return NextResponse.json({ error: "Invalid user name." }, { status: 400 });
   }
@@ -61,7 +85,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const user = await ensureUser(id.trim(), {
+    const user = await ensureUser(requestedId, {
       name: typeof name === "string" ? name : undefined,
       email: typeof email === "string" ? email : undefined,
     });

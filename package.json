@@ -7,6 +7,8 @@
     "build": "prisma generate && next build",
     "vercel-build": "prisma generate && prisma migrate deploy && tsx prisma/seed.ts && next build",
     "db:seed": "tsx prisma/seed.ts",
+    "db:backfill-agents": "tsx scripts/backfill-user-agents.ts",
+    "db:backfill-agents:dry-run": "tsx scripts/backfill-user-agents.ts --dry-run",
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",

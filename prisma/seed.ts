@@ -12,16 +12,16 @@ async function main() {
     return;
   }
 
-  const { ensureGlobalWorkspaceSeeded } = await import(
-    "@/lib/instruction-presets-db"
+  const { ensureAgentTemplatesSeeded } = await import(
+    "@/lib/agent-templates-db"
   );
   const { ensurePlatformSettingsSeeded } = await import(
     "@/lib/platform-settings-db"
   );
   const { getPrisma } = await import("@/lib/db");
 
-  await ensureGlobalWorkspaceSeeded();
-  console.log("Seeded shared-workspace validation agents.");
+  await ensureAgentTemplatesSeeded();
+  console.log("Seeded default agent templates.");
 
   await ensurePlatformSettingsSeeded();
   console.log("Seeded platform governance settings.");

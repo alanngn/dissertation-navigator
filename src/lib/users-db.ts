@@ -1,3 +1,4 @@
+import { provisionAgentsFromTemplates } from "@/lib/agent-templates-db";
 import { getPrisma } from "@/lib/db";
 import { formatSessionUserName } from "@/lib/session-user";
 
@@ -12,6 +13,7 @@ export async function listUsers(): Promise<UserSummary[]> {
   const prisma = getPrisma();
 
   return prisma.user.findMany({
+    where: { role: { not: "system" } },
     orderBy: [{ role: "asc" }, { name: "asc" }],
     select: {
       id: true,
@@ -35,7 +37,17 @@ export async function ensureUser(
   const displayName = input?.name?.trim() || formatSessionUserName(id);
   const email = input?.email?.trim() || `session-${id}@local`;
 
-  return prisma.user.upsert({
+  const existing = await prisma.user.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      _count: {
+        select: { presets: true },
+      },
+    },
+  });
+
+  const user = await prisma.user.upsert({
     where: { id },
     create: {
       id,
@@ -54,4 +66,10 @@ export async function ensureUser(
       role: true,
     },
   });
+
+  if (!existing || existing._count.presets === 0) {
+    await provisionAgentsFromTemplates(id);
+  }
+
+  return user;
 }

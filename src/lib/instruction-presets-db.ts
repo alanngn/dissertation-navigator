@@ -1,4 +1,5 @@
 import { Prisma } from "@/generated/prisma/client";
+import { provisionAgentsFromTemplates } from "@/lib/agent-templates-db";
 import { getPrisma } from "@/lib/db";
 import {
   normalizePreset,
@@ -7,12 +8,6 @@ import {
   type InstructionPreset,
   type InstructionPresetStore,
 } from "@/lib/instruction-presets";
-import {
-  GLOBAL_WORKSPACE_USER_EMAIL,
-  GLOBAL_WORKSPACE_USER_ID,
-  GLOBAL_WORKSPACE_USER_NAME,
-  buildSeededPresets,
-} from "@/lib/seed-agents";
 import { ensureUser } from "@/lib/users-db";
 
 function rulesToJson(rules: AgentRule[]): Prisma.InputJsonValue {
@@ -37,56 +32,6 @@ function toClientPreset(preset: {
     content: preset.content,
     updatedAt: preset.updatedAt.getTime(),
   });
-}
-
-/**
- * Ensures the shared workspace user exists and contains the seeded validation
- * agents. Seeding is idempotent: it inserts only the seed agents whose ids are
- * missing (matched on primary key), so existing agents — including user edits —
- * are never overwritten, while every deploy still guarantees the agents exist.
- * Safe to call on every workspace read.
- */
-export async function ensureGlobalWorkspaceSeeded(): Promise<void> {
-  const prisma = getPrisma();
-
-  await prisma.user.upsert({
-    where: { id: GLOBAL_WORKSPACE_USER_ID },
-    create: {
-      id: GLOBAL_WORKSPACE_USER_ID,
-      email: GLOBAL_WORKSPACE_USER_EMAIL,
-      name: GLOBAL_WORKSPACE_USER_NAME,
-      role: "system",
-    },
-    update: {},
-  });
-
-  const seeded = buildSeededPresets();
-
-  await prisma.instructionPreset.createMany({
-    data: seeded.map((preset) => ({
-      id: preset.id,
-      userId: GLOBAL_WORKSPACE_USER_ID,
-      name: preset.name,
-      purpose: preset.purpose,
-      businessFunction: preset.businessFunction,
-      rules: rulesToJson(preset.rules),
-      content: preset.content,
-      updatedAt: new Date(preset.updatedAt),
-    })),
-    skipDuplicates: true,
-  });
-
-  const workspaceUser = await prisma.user.findUnique({
-    where: { id: GLOBAL_WORKSPACE_USER_ID },
-    select: { activePresetId: true },
-  });
-
-  if (!workspaceUser?.activePresetId && seeded[0]?.id) {
-    await prisma.user.update({
-      where: { id: GLOBAL_WORKSPACE_USER_ID },
-      data: { activePresetId: seeded[0].id },
-    });
-  }
 }
 
 export async function loadPresetsFromDb(
@@ -118,6 +63,21 @@ export async function loadPresetsFromDb(
     presets: presets.map(toClientPreset),
     activeId,
   };
+}
+
+export async function loadOrProvisionPresetsFromDb(
+  userId: string,
+): Promise<InstructionPresetStore | null> {
+  let store = await loadPresetsFromDb(userId);
+
+  if (!store) {
+    const provisioned = await provisionAgentsFromTemplates(userId);
+    if (provisioned) {
+      store = await loadPresetsFromDb(userId);
+    }
+  }
+
+  return store;
 }
 
 export async function savePresetsToDb(

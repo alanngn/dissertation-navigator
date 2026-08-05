@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
+import { isAdminUser, requireAuthUserId } from "@/lib/admin-auth";
 import { isDatabaseConfigured } from "@/lib/db";
 import {
-  ensureGlobalWorkspaceSeeded,
-  loadPresetsFromDb,
+  loadOrProvisionPresetsFromDb,
   savePresetsToDb,
 } from "@/lib/instruction-presets-db";
 import {
   isAgentRulePriority,
   type InstructionPresetStore,
 } from "@/lib/instruction-presets";
-import { GLOBAL_WORKSPACE_USER_ID } from "@/lib/seed-agents";
 
 function getUserIdFromRequest(request: Request): string | null {
   const url = new URL(request.url);
@@ -48,7 +47,23 @@ function isValidStore(body: unknown): body is InstructionPresetStore {
   );
 }
 
+async function canAccessUserPresets(
+  authUserId: string,
+  requestedUserId: string,
+): Promise<boolean> {
+  if (authUserId === requestedUserId) {
+    return true;
+  }
+
+  return isAdminUser(authUserId);
+}
+
 export async function GET(request: Request) {
+  const authUserId = await requireAuthUserId();
+  if (!authUserId) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
   const userId = getUserIdFromRequest(request);
 
   if (!userId) {
@@ -56,6 +71,10 @@ export async function GET(request: Request) {
       { error: "userId query parameter is required." },
       { status: 400 },
     );
+  }
+
+  if (!(await canAccessUserPresets(authUserId, userId))) {
+    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
   if (!isDatabaseConfigured()) {
@@ -67,11 +86,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    if (userId === GLOBAL_WORKSPACE_USER_ID) {
-      await ensureGlobalWorkspaceSeeded();
-    }
-
-    const store = await loadPresetsFromDb(userId);
+    const store = await loadOrProvisionPresetsFromDb(userId);
 
     if (!store) {
       return NextResponse.json({
@@ -95,6 +110,11 @@ export async function GET(request: Request) {
 }
 
 export async function PUT(request: Request) {
+  const authUserId = await requireAuthUserId();
+  if (!authUserId) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
   const userId = getUserIdFromRequest(request);
 
   if (!userId) {
@@ -102,6 +122,10 @@ export async function PUT(request: Request) {
       { error: "userId query parameter is required." },
       { status: 400 },
     );
+  }
+
+  if (authUserId !== userId) {
+    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
   if (!isDatabaseConfigured()) {
